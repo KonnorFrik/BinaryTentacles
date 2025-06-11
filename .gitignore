@@ -1,0 +1,4 @@
+bin
+internal/generated
+db/postgres_data
+go.sum
