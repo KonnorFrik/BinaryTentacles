@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package order_service;
+option go_package = "github.com/KonnorFrik/BinaryTentacles";
+
+import "user_role.proto";
+
+message ViewMarketsRequest {
+    UserRole user_role = 1;
+}

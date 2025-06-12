@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package order_service;
+option go_package = "github.com/KonnorFrik/BinaryTentacles";
+
+import "view_markets_request.proto";
+import "view_markets_response.proto";
+
+service SpotInstrumentService {
+    rpc ViewMarkets(ViewMarketsRequest) returns (ViewMarketsResponse);
+}

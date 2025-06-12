@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package order_service;
+option go_package = "github.com/KonnorFrik/BinaryTentacles";
+
+enum OrderType {
+    ORDER_TYPE_UNSPECIFIED = 0;
+    ORDER_TYPE_T1 = 1;
+    ORDER_TYPE_T2 = 2;
+}

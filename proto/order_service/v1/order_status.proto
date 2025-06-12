@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package order_service;
+option go_package = "github.com/KonnorFrik/BinaryTentacles";
+
+enum OrderStatus {
+    ORDER_STATUS_UNSPECIFIED = 0;
+    ORDER_STATUS_CREATED = 1;
+    ORDER_STATUS_PROCESSING = 2;
+    ORDER_STATUS_PROCESSED = 3;
+    ORDER_STATUS_CONFIRM = 4;
+    ORDER_STATUS_REJECT = 5;
+}

@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package order_service;
+option go_package = "github.com/KonnorFrik/BinaryTentacles";
+
+message OrderStatusRequest {
+    uint64 order_id = 1;
+    uint64 user_id = 2;
+}

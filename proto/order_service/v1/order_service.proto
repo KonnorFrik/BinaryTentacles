@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package order_service;
+option go_package = "github.com/KonnorFrik/BinaryTentacles";
+
+import "create_order_request.proto";
+import "create_order_response.proto";
+
+import "order_status_request.proto";
+import "order_status_response.proto";
+
+import "order_updates_request.proto";
+import "order_updates_response.proto";
+
+service OrderService {
+    rpc Create(CreateRequest) returns (CreateResponse);
+    rpc OrderStatus(OrderStatusRequest) returns (OrderStatusResponse);
+    rpc OrderUpdates(OrderUpdatesRequest) returns (stream OrderUpdatesResponse);
+}
+

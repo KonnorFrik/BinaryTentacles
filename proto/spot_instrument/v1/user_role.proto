@@ -1,0 +1,12 @@
+/*
+Fake roles from unknown service
+*/
+syntax = "proto3";
+
+package order_service;
+option go_package = "github.com/KonnorFrik/BinaryTentacles";
+
+enum UserRole {
+    USER_ROLE_UNSPECIFIED = 0;
+    USER_ROLE_CUSTOMER = 1;
+}

@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package order_service;
+option go_package = "github.com/KonnorFrik/BinaryTentacles";
+
+import "market.proto";
+
+message ViewMarketsResponse {
+    repeated Market market = 1;
+}
+

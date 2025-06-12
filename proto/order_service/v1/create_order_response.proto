@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package order_service;
+option go_package = "github.com/KonnorFrik/BinaryTentacles";
+
+import "order_status.proto";
+
+message CreateResponse {
+    uint64 order_id = 1;
+    OrderStatus order_status = 2;
+}

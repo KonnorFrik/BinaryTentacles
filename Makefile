@@ -40,10 +40,6 @@ install_deps:
 	GOBIN=$(LOCAL_BIN) go install google.golang.org/protobuf/cmd/protoc-gen-go@v$(GEN_GO_VER)
 	GOBIN=$(LOCAL_BIN) go install -mod=mod google.golang.org/grpc/cmd/protoc-gen-go-grpc@v$(GEN_GO_GRPC_VER)
 
-# get_deps:
-# 	go get -u google.golang.org/protobuf/cmd/protoc-gen-go
-# 	go get -u google.golang.org/grpc/cmd/protoc-gen-go-grpc
-
 # build - build all .cmd/<name>/<version>/*.go files
 # require name and ver 
 build: check_name
