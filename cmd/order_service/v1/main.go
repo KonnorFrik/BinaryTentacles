@@ -8,14 +8,12 @@ import (
 	"errors"
 	"net"
 
-
-    "github.com/KonnorFrik/BinaryTentacles/pkg/logging"
-    pb "github.com/KonnorFrik/BinaryTentacles/internal/generated/order_service/v1"
+	pb "github.com/KonnorFrik/BinaryTentacles/internal/generated/order_service/v1"
+	"github.com/KonnorFrik/BinaryTentacles/pkg/logging"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
 )
 
 type server struct {
@@ -69,9 +67,8 @@ func WrapError(err error) error {
 	// case errors.Is(err, usecase.ErrDbNoAccess):
 	// 	// default = Internal
 	// case errors.Is(err, usecase.ErrUnknown):
-		// default = Internal
+	// default = Internal
 	}
 
 	return status.Error(code, msg)
 }
-
