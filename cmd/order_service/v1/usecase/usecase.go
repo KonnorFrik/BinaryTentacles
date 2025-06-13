@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 
 	"github.com/KonnorFrik/BinaryTentacles/cmd/order_service/v1/usecase/order"
@@ -14,18 +15,17 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// TODO: create market client and call it
-
 var (
 	fakeDB = db.New()
 
-	spotInstrumentAddr = "0.0.0.0:9999"
+	spotInstrumentAddr = "spot_instrument:9999"
 	spotInstrument     client.SpotInstrumentServiceClient
 	logger             = logging.Default()
 )
 
 var (
-	ErrDoesNotExist = errors.New("object does not exist")
+	ErrDoesNotExist  = errors.New("object does not exist")
+	ErrInvalidMarket = errors.New("market is unavailable")
 )
 
 func init() {
@@ -43,6 +43,8 @@ func init() {
 			slog.String("Connection to", "SpotInstrumentService"),
 			slog.String("Error", err.Error()),
 		)
+
+		return
 	}
 
 	spotInstrument = client.NewSpotInstrumentServiceClient(conn)
@@ -78,6 +80,15 @@ func Create(
 		return nil, err
 	}
 
+	logger.LogAttrs(
+		nil,
+		slog.LevelInfo,
+		"[OrderService/Create]",
+		slog.Int("Got markets LEN", len(marketsResponse.Market)),
+		// FIX: invsible slice with len 1+
+		slog.String("Got markets", fmt.Sprintf("%+v", marketsResponse.Market)),
+	)
+
 	var (
 		marketIdCount   int
 		marketIdRequest = req.GetMarketId()
@@ -94,15 +105,24 @@ func Create(
 			nil,
 			slog.LevelError,
 			"[OrderService/Create]",
-			slog.String("Markets status", "No available"),
+			slog.Uint64("Requested id", req.GetMarketId()),
+			slog.String("Status", "Not found"),
+			slog.Int("Got markets count", len(marketsResponse.Market)),
 		)
-		return nil, errors.New("No available markets")
+		return nil, ErrInvalidMarket
 	}
 
 	var order = new(order.Order)
 	order.FromGrpcCreateRequest(req)
-	id := fakeDB.Create(ctx, order)
-	order.Id = id
+	order.Status = pb.OrderStatus_ORDER_STATUS_CREATED
+	order.Id = fakeDB.Create(ctx, order)
+	logger.LogAttrs(
+		nil,
+		slog.LevelInfo,
+		"[OrderService/Create] Create order",
+		slog.Uint64("id", order.Id),
+		slog.Any("Order", order),
+	)
 	return order, nil
 }
 

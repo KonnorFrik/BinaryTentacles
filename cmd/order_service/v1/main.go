@@ -23,7 +23,7 @@ type server struct {
 }
 
 var (
-	logger = logging.New()
+	logger = logging.Default()
 )
 
 const (
@@ -63,9 +63,10 @@ func WrapError(err error) error {
 	switch {
 	case errors.Is(err, usecase.ErrDoesNotExist):
 		code = codes.NotFound
-		msg = "Object cannot be found"
-		// case errors.Is(err, usecase.ErrAlreadyExist):
-		// 	code = codes.AlreadyExists
+		msg = "object cannot be found"
+	case errors.Is(err, usecase.ErrInvalidMarket):
+		code = codes.FailedPrecondition
+		msg = "market is unavailable"
 		// case errors.Is(err, usecase.ErrInvalidData):
 		// 	code = codes.InvalidArgument
 		// case errors.Is(err, usecase.ErrDbNoAccess):
@@ -77,6 +78,7 @@ func WrapError(err error) error {
 	return status.Error(code, msg)
 }
 
+// TODO: run goroutine for process orders status
 func (s *server) Create(
 	ctx context.Context,
 	req *pb.CreateRequest,
@@ -124,6 +126,9 @@ func (s *server) OrderUpdates(
 		return WrapError(err)
 	}
 
+	var delay = time.Millisecond * time.Duration(req.GetDelayMs()) * 2
+	go order.UpdateStatus(stream.Context(), delay)
+
 	for {
 		var resp = new(pb.OrderUpdatesResponse)
 		resp.Status = order.GetStatus()
@@ -133,7 +138,13 @@ func (s *server) OrderUpdates(
 			return e
 		}
 
-		time.Sleep(time.Millisecond * time.Duration(req.GetDelayMs()))
+		select {
+		case <-stream.Context().Done():
+			return nil
+		default:
+		}
+
+		time.Sleep(delay)
 	}
 
 	// return nil
