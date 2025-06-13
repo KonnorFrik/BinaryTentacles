@@ -24,6 +24,12 @@ func New() *Logger {
 	return l
 }
 
+var defaultLogger = New()
+
+func Default() *Logger {
+	return defaultLogger
+}
+
 func (l *Logger) UnaryServerInterceptor(
 	ctx context.Context,
 	req any,

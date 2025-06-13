@@ -2,6 +2,8 @@ package fake_db
 
 import (
 	"context"
+	"maps"
+	"slices"
 	"sync"
 )
 
@@ -21,7 +23,10 @@ func New() *Db {
 // Create - create an object in Db.
 // Returns id of created object.
 // If object already exist - overwrite it.
-func (d *Db) Create(ctx context.Context, obj any) uint64 {
+func (d *Db) Create(
+	ctx context.Context,
+	obj any,
+) uint64 {
 	d.idMut.Lock()
 	var id = d.nextId
 	d.nextId++
@@ -34,7 +39,13 @@ func (d *Db) Create(ctx context.Context, obj any) uint64 {
 }
 
 // Get - return stored object by id if exist.
-func (d *Db) Get(ctx context.Context, id uint64) (any, bool) {
+func (d *Db) Get(
+	ctx context.Context,
+	id uint64,
+) (
+	any,
+	bool,
+) {
 	d.itemsMut.Lock()
 	defer d.itemsMut.Unlock()
 
@@ -42,11 +53,26 @@ func (d *Db) Get(ctx context.Context, id uint64) (any, bool) {
 	return obj, ok
 }
 
+func (d *Db) All(
+	ctx context.Context,
+) []any {
+	d.itemsMut.Lock()
+	defer d.itemsMut.Unlock()
+	return slices.Collect(maps.Values(d.items))
+}
+
 type dbGetted interface {
 	Get(context.Context, uint64) (any, bool)
 }
 
-func As[T any](ctx context.Context, db dbGetted, id uint64) (T, bool) {
+func As[T any](
+	ctx context.Context,
+	db dbGetted,
+	id uint64,
+) (
+	T,
+	bool,
+) {
 	obj, exist := db.Get(ctx, id)
 
 	if !exist {
@@ -56,4 +82,27 @@ func As[T any](ctx context.Context, db dbGetted, id uint64) (T, bool) {
 
 	typedObj, ok := obj.(T)
 	return typedObj, ok
+}
+
+type dbAll interface {
+	All(context.Context) []any
+}
+
+// All - return all values of type T.
+// Other types will be rejected.
+func All[T any](
+	ctx context.Context,
+	db dbAll,
+) []T {
+	var result []T
+
+	for _, val := range db.All(ctx) {
+		typedVal, ok := val.(T)
+
+		if ok {
+			result = append(result, typedVal)
+		}
+	}
+
+	return result
 }

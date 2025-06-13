@@ -27,7 +27,7 @@ var (
 )
 
 const (
-	laddr = ":9999"
+	laddr = ":8888"
 )
 
 func main() {
@@ -118,7 +118,7 @@ func (s *server) OrderUpdates(
 	stream grpc.ServerStreamingServer[pb.OrderUpdatesResponse],
 ) error {
 
-	order, err := usecase.Get(stream.Context(), req.GetOrderId())
+	order, err := usecase.OrderById(stream.Context(), req.GetOrderId())
 
 	if err != nil {
 		return WrapError(err)
