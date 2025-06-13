@@ -21,7 +21,7 @@ type server struct {
 }
 
 var (
-	logger = logging.New()
+	logger = logging.Default()
 )
 
 const (
