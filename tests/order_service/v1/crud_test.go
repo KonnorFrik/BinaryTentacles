@@ -2,6 +2,7 @@ package order_service_v1_test
 
 import (
 	"context"
+	"io"
 	"testing"
 	"time"
 
@@ -223,6 +224,10 @@ func TestStream(t *testing.T) {
 		resp, err := stream.Recv()
 
 		if err != nil {
+			if err == io.EOF {
+				break
+			}
+
 			t.Fatalf("Got = %q\n", err)
 		}
 
@@ -246,8 +251,17 @@ func TestStream(t *testing.T) {
 			wantStatus = client.OrderStatus_ORDER_STATUS_CONFIRM
 
 		default:
-			if resp.GetStatus() != client.OrderStatus_ORDER_STATUS_CONFIRM || resp.GetStatus() != client.OrderStatus_ORDER_STATUS_REJECT {
+			if resp.GetStatus() != client.OrderStatus_ORDER_STATUS_CONFIRM && resp.GetStatus() != client.OrderStatus_ORDER_STATUS_REJECT {
 				t.Fatalf("Got = %d, Want = %d || %d\n", resp.GetStatus(), client.OrderStatus_ORDER_STATUS_CONFIRM, client.OrderStatus_ORDER_STATUS_REJECT)
+
+			} else {
+				err := stream.CloseSend()
+
+				if err != nil {
+					t.Fatalf("Got = %q\n", err)
+				}
+
+				break
 			}
 		}
 	}

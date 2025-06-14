@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"strconv"
 	"time"
@@ -70,6 +71,10 @@ func init() {
 	)
 }
 
+var (
+	ErrNoMarkets = errors.New("no available markets")
+)
+
 func ViewMarkets(
 	ctx context.Context,
 	req *pb.ViewMarketsRequest,
@@ -84,6 +89,10 @@ func ViewMarkets(
 		if m.IsActive() {
 			markets = append(markets, m)
 		}
+	}
+
+	if len(markets) == 0 {
+		return nil, ErrNoMarkets
 	}
 
 	return markets, nil

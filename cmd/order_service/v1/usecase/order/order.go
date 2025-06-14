@@ -4,7 +4,6 @@ import (
 	"context"
 	"math/rand"
 	"sync"
-	"time"
 
 	pb "github.com/KonnorFrik/BinaryTentacles/internal/generated/order_service/v1"
 )
@@ -45,44 +44,51 @@ func (o *Order) ToGrpcCreateResponse(
 	return o
 }
 
-// UpdateStatus - must be run as goroutine
+// UpdateStatus - Start goroutine for fake update order status.
 func (o *Order) UpdateStatus(
 	ctx context.Context,
-	delay time.Duration,
-) {
-	var loop bool = true
+) <-chan pb.OrderStatus {
+	var result = make(chan pb.OrderStatus)
 
-	for loop {
-		o.mut.Lock()
-		if o.Status == pb.OrderStatus_ORDER_STATUS_CONFIRM || o.Status == pb.OrderStatus_ORDER_STATUS_REJECT {
-			break
-		}
+	go func() {
+		var loop bool = true
+		for loop {
+			o.mut.Lock()
+			var orderStatus pb.OrderStatus = o.Status
 
-		switch o.Status {
-		case pb.OrderStatus_ORDER_STATUS_CREATED:
-			o.Status = pb.OrderStatus_ORDER_STATUS_PROCESSING
-
-		case pb.OrderStatus_ORDER_STATUS_PROCESSING:
-			o.Status = pb.OrderStatus_ORDER_STATUS_PROCESSED
-
-		case pb.OrderStatus_ORDER_STATUS_PROCESSED:
-			if rand.Intn(2) == 0 {
-				o.Status = pb.OrderStatus_ORDER_STATUS_CONFIRM
-
-			} else {
-				o.Status = pb.OrderStatus_ORDER_STATUS_REJECT
+			if o.Status == pb.OrderStatus_ORDER_STATUS_CONFIRM || o.Status == pb.OrderStatus_ORDER_STATUS_REJECT {
+				break
 			}
 
-			loop = false
+			switch o.Status {
+			case pb.OrderStatus_ORDER_STATUS_CREATED:
+				o.Status = pb.OrderStatus_ORDER_STATUS_PROCESSING
+
+			case pb.OrderStatus_ORDER_STATUS_PROCESSING:
+				o.Status = pb.OrderStatus_ORDER_STATUS_PROCESSED
+
+			case pb.OrderStatus_ORDER_STATUS_PROCESSED:
+				if rand.Intn(2) == 0 {
+					o.Status = pb.OrderStatus_ORDER_STATUS_CONFIRM
+
+				} else {
+					o.Status = pb.OrderStatus_ORDER_STATUS_REJECT
+				}
+
+				loop = false
+			}
+
+			o.mut.Unlock()
+
+			select {
+			case <-ctx.Done():
+				return
+			case result <- orderStatus:
+			}
 		}
 
-		o.mut.Unlock()
+		close(result)
+	}()
 
-		select {
-		case <-ctx.Done():
-			return
-		default:
-		}
-		time.Sleep(delay)
-	}
+	return result
 }

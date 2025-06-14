@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 
 	"github.com/KonnorFrik/BinaryTentacles/cmd/order_service/v1/usecase/order"
@@ -80,15 +79,6 @@ func Create(
 		return nil, err
 	}
 
-	logger.LogAttrs(
-		nil,
-		slog.LevelInfo,
-		"[OrderService/Create]",
-		slog.Int("Got markets LEN", len(marketsResponse.Market)),
-		// FIX: invsible slice with len 1+
-		slog.String("Got markets", fmt.Sprintf("%+v", marketsResponse.Market)),
-	)
-
 	var (
 		marketIdCount   int
 		marketIdRequest = req.GetMarketId()
@@ -105,9 +95,8 @@ func Create(
 			nil,
 			slog.LevelError,
 			"[OrderService/Create]",
-			slog.Uint64("Requested id", req.GetMarketId()),
+			slog.Uint64("Requested market id", req.GetMarketId()),
 			slog.String("Status", "Not found"),
-			slog.Int("Got markets count", len(marketsResponse.Market)),
 		)
 		return nil, ErrInvalidMarket
 	}
@@ -116,13 +105,6 @@ func Create(
 	order.FromGrpcCreateRequest(req)
 	order.Status = pb.OrderStatus_ORDER_STATUS_CREATED
 	order.Id = fakeDB.Create(ctx, order)
-	logger.LogAttrs(
-		nil,
-		slog.LevelInfo,
-		"[OrderService/Create] Create order",
-		slog.Uint64("id", order.Id),
-		slog.Any("Order", order),
-	)
 	return order, nil
 }
 
@@ -133,13 +115,8 @@ func OrderStatus(
 	*order.Order,
 	error,
 ) {
-	order, ok := db.As[*order.Order](ctx, fakeDB, req.GetOrderId())
-
-	if !ok {
-		return nil, ErrDoesNotExist
-	}
-
-	return order, nil
+	order, err := OrderById(ctx, req.GetOrderId())
+	return order, err
 }
 
 func OrderById(

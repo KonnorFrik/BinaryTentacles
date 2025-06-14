@@ -7,10 +7,12 @@ import (
 	"context"
 	"net"
 
-	"github.com/KonnorFrik/BinaryTentacles/pkg/logging"
+	loggingWrap "github.com/KonnorFrik/BinaryTentacles/pkg/logging"
+
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/KonnorFrik/BinaryTentacles/cmd/spot_instrument/v1/usecase"
 	pb "github.com/KonnorFrik/BinaryTentacles/internal/generated/spot_instrument/v1"
@@ -21,7 +23,7 @@ type server struct {
 }
 
 var (
-	logger = logging.Default()
+	logger = loggingWrap.Default()
 )
 
 const (
@@ -39,7 +41,23 @@ func main() {
 	userServer := &server{}
 	grpcServer := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
-			logger.UnaryServerInterceptor,
+			grpc_prometheus.UnaryServerInterceptor,
+			logging.UnaryServerInterceptor(
+				InterceptorLogger(logger.Logger),
+				logging.WithLogOnEvents(logging.StartCall, logging.FinishCall),
+				logging.WithCodes(ErrorToCode),
+			),
+			// From doc - "use those as "last" interceptor, so panic does not skip other interceptors"
+			recovery.UnaryServerInterceptor(recovery.WithRecoveryHandler(RecoveryHandler)),
+		),
+		grpc.ChainStreamInterceptor(
+			grpc_prometheus.StreamServerInterceptor,
+			logging.StreamServerInterceptor(
+				InterceptorLogger(logger.Logger),
+				logging.WithLogOnEvents(logging.StartCall, logging.FinishCall),
+				logging.WithCodes(ErrorToCode),
+			),
+			recovery.StreamServerInterceptor(recovery.WithRecoveryHandler(RecoveryHandler)),
 		),
 	)
 	pb.RegisterSpotInstrumentServiceServer(grpcServer, userServer)
@@ -53,27 +71,6 @@ func main() {
 	}
 }
 
-// WrapError - wrap usecase error into gRPC error with codes
-func WrapError(err error) error {
-	var code = codes.Internal
-	var msg string
-
-	switch {
-	// case errors.Is(err, usecase.ErrDoesNotExist):
-	// 	code = codes.NotFound
-	// case errors.Is(err, usecase.ErrAlreadyExist):
-	// 	code = codes.AlreadyExists
-	// case errors.Is(err, usecase.ErrInvalidData):
-	// 	code = codes.InvalidArgument
-	// case errors.Is(err, usecase.ErrDbNoAccess):
-	// 	// default = Internal
-	// case errors.Is(err, usecase.ErrUnknown):
-	// default = Internal
-	}
-
-	return status.Error(code, msg)
-}
-
 func (s *server) ViewMarkets(
 	ctx context.Context,
 	req *pb.ViewMarketsRequest,
@@ -85,10 +82,6 @@ func (s *server) ViewMarkets(
 
 	if err != nil {
 		return nil, WrapError(err)
-	}
-
-	if len(markets) == 0 {
-		return nil, status.Error(codes.Aborted, "Something went wrong")
 	}
 
 	var resp pb.ViewMarketsResponse

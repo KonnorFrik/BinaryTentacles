@@ -5,10 +5,8 @@ package main
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"net"
-	"time"
 
 	"github.com/KonnorFrik/BinaryTentacles/cmd/order_service/v1/usecase"
 	pb "github.com/KonnorFrik/BinaryTentacles/internal/generated/order_service/v1"
@@ -16,7 +14,6 @@ import (
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
-	// "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -59,9 +56,7 @@ func main() {
 				logging.WithCodes(ErrorToCode),
 			),
 			// From doc - "use those as "last" interceptor, so panic does not skip other interceptors"
-			recovery.UnaryServerInterceptor(recovery.WithRecoveryHandler(func(p any) (err error) {
-				return status.Error(codes.Internal, "Something went wrong")
-			})),
+			recovery.UnaryServerInterceptor(recovery.WithRecoveryHandler(RecoveryHandler)),
 		),
 		grpc.ChainStreamInterceptor(
 			grpc_prometheus.StreamServerInterceptor,
@@ -70,9 +65,7 @@ func main() {
 				logging.WithLogOnEvents(logging.StartCall, logging.FinishCall),
 				logging.WithCodes(ErrorToCode),
 			),
-			recovery.StreamServerInterceptor(recovery.WithRecoveryHandler(func(p any) (err error) {
-				return status.Error(codes.Internal, "Something went wrong")
-			})),
+			recovery.StreamServerInterceptor(recovery.WithRecoveryHandler(RecoveryHandler)),
 		),
 	)
 	pb.RegisterOrderServiceServer(grpcServer, userServer)
@@ -96,30 +89,6 @@ func main() {
 	}
 }
 
-// WrapError - wrap usecase error into gRPC error with codes
-func WrapError(err error) error {
-	var code = codes.Internal
-	var msg string
-
-	switch {
-	case errors.Is(err, usecase.ErrDoesNotExist):
-		code = codes.NotFound
-		msg = "object cannot be found"
-	case errors.Is(err, usecase.ErrInvalidMarket):
-		code = codes.FailedPrecondition
-		msg = "market is unavailable"
-		// case errors.Is(err, usecase.ErrInvalidData):
-		// 	code = codes.InvalidArgument
-		// case errors.Is(err, usecase.ErrDbNoAccess):
-		// 	// default = Internal
-		// case errors.Is(err, usecase.ErrUnknown):
-		// default = Internal
-	}
-
-	return status.Error(code, msg)
-}
-
-// TODO: run goroutine for process orders status
 func (s *server) Create(
 	ctx context.Context,
 	req *pb.CreateRequest,
@@ -167,46 +136,27 @@ func (s *server) OrderUpdates(
 		return WrapError(err)
 	}
 
-	var delay = time.Millisecond * time.Duration(req.GetDelayMs()) * 2
-	go order.UpdateStatus(stream.Context(), delay)
+	statuses := order.UpdateStatus(stream.Context())
 
 	for {
-		var resp = new(pb.OrderUpdatesResponse)
-		resp.Status = order.GetStatus()
+		var (
+			resp     = new(pb.OrderUpdatesResponse)
+			isClosed bool
+		)
+
+		select {
+		case <-stream.Context().Done():
+			return nil
+		case resp.Status, isClosed = <-statuses:
+		}
+
+		if isClosed {
+			return nil
+		}
 
 		if e := stream.Send(resp); e != nil {
 			// TODO: catch a closed by a client connection
 			return e
 		}
-
-		select {
-		case <-stream.Context().Done():
-			return nil
-		default:
-		}
-
-		time.Sleep(delay)
 	}
-}
-
-// InterceptorLogger adapts slog logger to interceptor logger.
-// This code is simple enough to be copied and not imported.
-func InterceptorLogger(l *slog.Logger) logging.Logger {
-	return logging.LoggerFunc(func(ctx context.Context, lvl logging.Level, msg string, fields ...any) {
-		l.Log(ctx, slog.Level(lvl), msg, fields...)
-	})
-}
-
-func ErrorToCode(err error) codes.Code {
-	if err == nil {
-		return codes.OK
-	}
-
-	stat, ok := status.FromError(err)
-
-	if ok {
-		return stat.Code()
-	}
-
-	return codes.Internal
 }
