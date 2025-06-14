@@ -29,8 +29,6 @@ services:
         limits:
           memory: 512M
           cpus: 2
-    networks:
-      - gRPC_NET
 
   spot_instrument:
     build:
@@ -58,13 +56,13 @@ services:
         limits:
           memory: 512M
           cpus: 2
-    networks:
-      - gRPC_NET
 
-networks:
-  gRPC_NET:
-    driver: bridge
-
+  metrics_prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ../config/metrics/prometheus:/etc/prometheus
 
   # postgres:
   #   image: postgres
