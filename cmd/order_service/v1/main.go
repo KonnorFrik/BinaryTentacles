@@ -10,6 +10,7 @@ import (
 
 	"github.com/KonnorFrik/BinaryTentacles/cmd/order_service/v1/usecase"
 	pb "github.com/KonnorFrik/BinaryTentacles/internal/generated/order_service/v1"
+	interceptor "github.com/KonnorFrik/BinaryTentacles/pkg/interceptor"
 	loggingWrap "github.com/KonnorFrik/BinaryTentacles/pkg/logging"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
@@ -55,6 +56,7 @@ func main() {
 				logging.WithLogOnEvents(logging.StartCall, logging.FinishCall),
 				logging.WithCodes(ErrorToCode),
 			),
+			interceptor.UnaryServerXRequestId,
 			// From doc - "use those as "last" interceptor, so panic does not skip other interceptors"
 			recovery.UnaryServerInterceptor(recovery.WithRecoveryHandler(RecoveryHandler)),
 		),
@@ -65,6 +67,7 @@ func main() {
 				logging.WithLogOnEvents(logging.StartCall, logging.FinishCall),
 				logging.WithCodes(ErrorToCode),
 			),
+			interceptor.StreamServerXRequestId,
 			recovery.StreamServerInterceptor(recovery.WithRecoveryHandler(RecoveryHandler)),
 		),
 	)

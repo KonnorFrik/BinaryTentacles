@@ -9,13 +9,15 @@ import (
 
 	loggingWrap "github.com/KonnorFrik/BinaryTentacles/pkg/logging"
 
+	"github.com/KonnorFrik/BinaryTentacles/cmd/spot_instrument/v1/usecase"
+	"github.com/KonnorFrik/BinaryTentacles/cmd/spot_instrument/v1/usecase/market"
+	pb "github.com/KonnorFrik/BinaryTentacles/internal/generated/spot_instrument/v1"
+	interceptor "github.com/KonnorFrik/BinaryTentacles/pkg/interceptor"
+
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"google.golang.org/grpc"
-
-	"github.com/KonnorFrik/BinaryTentacles/cmd/spot_instrument/v1/usecase"
-	pb "github.com/KonnorFrik/BinaryTentacles/internal/generated/spot_instrument/v1"
 )
 
 type server struct {
@@ -47,6 +49,7 @@ func main() {
 				logging.WithLogOnEvents(logging.StartCall, logging.FinishCall),
 				logging.WithCodes(ErrorToCode),
 			),
+			interceptor.UnaryServerXRequestId,
 			// From doc - "use those as "last" interceptor, so panic does not skip other interceptors"
 			recovery.UnaryServerInterceptor(recovery.WithRecoveryHandler(RecoveryHandler)),
 		),
@@ -57,6 +60,7 @@ func main() {
 				logging.WithLogOnEvents(logging.StartCall, logging.FinishCall),
 				logging.WithCodes(ErrorToCode),
 			),
+			interceptor.StreamServerXRequestId,
 			recovery.StreamServerInterceptor(recovery.WithRecoveryHandler(RecoveryHandler)),
 		),
 	)
@@ -85,6 +89,7 @@ func (s *server) ViewMarkets(
 	}
 
 	var resp pb.ViewMarketsResponse
-	markets[0].ToGrpcViewMarketResponse(markets, &resp)
+	resp.Market = make([]*pb.Market, len(markets))
+	market.ToProtobufMany(markets, resp.Market)
 	return &resp, nil
 }
