@@ -6,13 +6,18 @@ package main
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net"
 	"time"
 
 	"github.com/KonnorFrik/BinaryTentacles/cmd/order_service/v1/usecase"
 	pb "github.com/KonnorFrik/BinaryTentacles/internal/generated/order_service/v1"
-	"github.com/KonnorFrik/BinaryTentacles/pkg/logging"
+	loggingWrap "github.com/KonnorFrik/BinaryTentacles/pkg/logging"
 
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
+	// "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
+	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -23,7 +28,7 @@ type server struct {
 }
 
 var (
-	logger = logging.Default()
+	logger = loggingWrap.Default()
 )
 
 const (
@@ -35,22 +40,58 @@ func main() {
 
 	if err != nil {
 		logger.Error("[Server/Listen]", "error", err)
+		logger.LogAttrs(
+			nil,
+			slog.LevelError,
+			"[Server/Listen]",
+			slog.String("error", err.Error()),
+		)
 		return
 	}
 
 	userServer := &server{}
 	grpcServer := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
-			logger.UnaryServerInterceptor,
+			grpc_prometheus.UnaryServerInterceptor,
+			logging.UnaryServerInterceptor(
+				InterceptorLogger(logger.Logger),
+				logging.WithLogOnEvents(logging.StartCall, logging.FinishCall),
+				logging.WithCodes(ErrorToCode),
+			),
+			// From doc - "use those as "last" interceptor, so panic does not skip other interceptors"
+			recovery.UnaryServerInterceptor(recovery.WithRecoveryHandler(func(p any) (err error) {
+				return status.Error(codes.Internal, "Something went wrong")
+			})),
+		),
+		grpc.ChainStreamInterceptor(
+			grpc_prometheus.StreamServerInterceptor,
+			logging.StreamServerInterceptor(
+				InterceptorLogger(logger.Logger),
+				logging.WithLogOnEvents(logging.StartCall, logging.FinishCall),
+				logging.WithCodes(ErrorToCode),
+			),
+			recovery.StreamServerInterceptor(recovery.WithRecoveryHandler(func(p any) (err error) {
+				return status.Error(codes.Internal, "Something went wrong")
+			})),
 		),
 	)
 	pb.RegisterOrderServiceServer(grpcServer, userServer)
-	logger.Info("Listen at", "local address", laddr)
+	logger.LogAttrs(
+		nil,
+		slog.LevelInfo,
+		"[Server/Listen]",
+		slog.String("Local address", laddr),
+	)
 
 	err = grpcServer.Serve(listener)
 
 	if err != nil {
-		logger.Error("Serve", "error", err)
+		logger.LogAttrs(
+			nil,
+			slog.LevelError,
+			"[Server/Serve]",
+			slog.String("error", err.Error()),
+		)
 		return
 	}
 }
@@ -146,6 +187,26 @@ func (s *server) OrderUpdates(
 
 		time.Sleep(delay)
 	}
+}
 
-	// return nil
+// InterceptorLogger adapts slog logger to interceptor logger.
+// This code is simple enough to be copied and not imported.
+func InterceptorLogger(l *slog.Logger) logging.Logger {
+	return logging.LoggerFunc(func(ctx context.Context, lvl logging.Level, msg string, fields ...any) {
+		l.Log(ctx, slog.Level(lvl), msg, fields...)
+	})
+}
+
+func ErrorToCode(err error) codes.Code {
+	if err == nil {
+		return codes.OK
+	}
+
+	stat, ok := status.FromError(err)
+
+	if ok {
+		return stat.Code()
+	}
+
+	return codes.Internal
 }
