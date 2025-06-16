@@ -5,24 +5,13 @@ services:
     build:
       context: ..
       dockerfile: ./cmd/order_service/v1/Dockerfile
-    # environment:
-    #     DB_HOST: $DB_HOST
-    #     DB_USER: $DB_USER
-    #     DB_PASS: $DB_PASS
-    #     DB_PORT: $DB_PORT
-    #     DB_DB: $DB_DB
     hostname: order_service
     ports:
       - "8888:8888"
     links:
       - "spot_instrument"
-    #   - "postgres"
     depends_on:
       - spot_instrument
-    #   postgres:
-    #     condition: service_healthy
-    #   go_migrator:
-    #     condition: service_completed_successfully
     restart: always
     deploy:
       resources:
@@ -34,22 +23,9 @@ services:
     build:
       context: ..
       dockerfile: ./cmd/spot_instrument/v1/Dockerfile
-    # environment:
-    #     DB_HOST: $DB_HOST
-    #     DB_USER: $DB_USER
-    #     DB_PASS: $DB_PASS
-    #     DB_PORT: $DB_PORT
-    #     DB_DB: $DB_DB
     hostname: spot_instrument
     ports:
       - "9999:9999"
-    # links:
-    #   - "postgres"
-    # depends_on:
-    #   postgres:
-    #     condition: service_healthy
-    #   go_migrator:
-    #     condition: service_completed_successfully
     restart: always
     deploy:
       resources:
@@ -64,31 +40,6 @@ services:
     volumes:
       - ../config/metrics/prometheus:/etc/prometheus
 
-  # postgres:
-  #   image: postgres
-  #   restart: on-failure
-  #   environment:
-  #     POSTGRES_PASSWORD: $DB_PASS
-  #     POSTGRES_USER: $DB_USER
-  #     POSTGRES_DB: $DB_DB
-  #   volumes:
-  #     - ../db/postgres_data/:/var/lib/postgresql/data
-  #   ports:
-  #     - "5432:5432"
-  #   deploy:
-  #     resources:
-  #       limits:
-  #         memory: 1G
-  #         cpus: 4
-  #   healthcheck:
-  #     # TODO: fix
-  #     # this command can't see env vars and spam "role '-d' don't exist"
-  #     test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-  #     interval: 30s
-  #     retries: 5
-  #     start_period: 30s
-  #     timeout: 30s
-
   # jaeger:
   #   image: jaegertracing/all-in-one
   #   ports:
@@ -99,25 +50,3 @@ services:
   #       limits:
   #         memory: 1G
   #         cpus: 2
-
-  # go_migrator:
-  #   build:
-  #     context: ..
-  #     dockerfile: ./cmd/migrator/Dockerfile
-  #   environment:
-  #       DB_HOST: $DB_HOST
-  #       DB_USER: $DB_USER
-  #       DB_PASS: $DB_PASS
-  #       DB_PORT: $DB_PORT
-  #       DB_DB: $DB_DB
-  #   links:
-  #     - "postgres"
-  #   depends_on:
-  #     - postgres
-  #   restart: on-failure
-  #   deploy:
-  #     resources:
-  #       limits:
-  #         memory: 512M
-  #         cpus: 1
-

@@ -51,7 +51,9 @@ func (o *Order) UpdateStatus(
 	var result = make(chan pb.OrderStatus)
 
 	go func() {
+		defer close(result)
 		var loop bool = true
+
 		for loop {
 			o.mut.Lock()
 			var orderStatus pb.OrderStatus = o.Status
@@ -86,8 +88,6 @@ func (o *Order) UpdateStatus(
 			case result <- orderStatus:
 			}
 		}
-
-		close(result)
 	}()
 
 	return result

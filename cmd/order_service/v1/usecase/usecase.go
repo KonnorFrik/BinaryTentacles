@@ -14,17 +14,20 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-var (
-	fakeDB = db.New()
-
+const (
 	spotInstrumentAddr = "spot_instrument:9999"
-	spotInstrument     client.SpotInstrumentServiceClient
-	logger             = logging.Default()
 )
 
 var (
-	ErrDoesNotExist  = errors.New("object does not exist")
-	ErrInvalidMarket = errors.New("market is unavailable")
+	fakeDB = db.New()
+
+	spotInstrument client.SpotInstrumentServiceClient
+	logger         = logging.Default()
+)
+
+var (
+	ErrDoesNotExist      = errors.New("object does not exist")
+	ErrMarketUnavailable = errors.New("market is unavailable")
 )
 
 func init() {
@@ -98,7 +101,7 @@ func Create(
 			slog.Uint64("Requested market id", req.GetMarketId()),
 			slog.String("Status", "Not found"),
 		)
-		return nil, ErrInvalidMarket
+		return nil, ErrMarketUnavailable
 	}
 
 	var order = new(order.Order)

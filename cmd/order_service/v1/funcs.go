@@ -48,7 +48,7 @@ func WrapError(err error) error {
 	case errors.Is(err, usecase.ErrDoesNotExist):
 		code = codes.NotFound
 		msg = "object cannot be found"
-	case errors.Is(err, usecase.ErrInvalidMarket):
+	case errors.Is(err, usecase.ErrMarketUnavailable):
 		code = codes.FailedPrecondition
 		msg = "market is unavailable"
 		// case errors.Is(err, usecase.ErrInvalidData):

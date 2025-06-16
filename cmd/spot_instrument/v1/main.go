@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"log/slog"
 	"net"
 
 	loggingWrap "github.com/KonnorFrik/BinaryTentacles/pkg/logging"
@@ -65,12 +66,22 @@ func main() {
 		),
 	)
 	pb.RegisterSpotInstrumentServiceServer(grpcServer, userServer)
-	logger.Info("Listen at", "local address", laddr)
+	logger.LogAttrs(
+		nil,
+		slog.LevelInfo,
+		"Listen at",
+		slog.String("local address", laddr),
+	)
 
 	err = grpcServer.Serve(listener)
 
 	if err != nil {
-		logger.Error("Serve", "error", err)
+		logger.LogAttrs(
+			nil,
+			slog.LevelError,
+			"Serve",
+			slog.String("error", err.Error()),
+		)
 		return
 	}
 }
