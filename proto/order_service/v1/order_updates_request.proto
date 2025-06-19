@@ -4,7 +4,7 @@ package order_service;
 option go_package = "github.com/KonnorFrik/BinaryTentacles";
 
 message OrderUpdatesRequest {
-    uint64 order_id = 1;
-    uint64 user_id = 2;
+    string order_id = 1;
+    string user_id = 2;
     int64 delay_ms = 3;
 }
