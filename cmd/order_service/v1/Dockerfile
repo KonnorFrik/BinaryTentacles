@@ -1,7 +1,7 @@
 # === Build stage === #
 FROM golang:1.24-alpine3.21 AS builder
-COPY go.mod go.sum /go/src/
 WORKDIR /go/src/
+COPY go.mod go.sum /go/src/
 RUN go mod download && apk add make
 COPY . /go/src/
 RUN make build name=order_service ver=1

@@ -6,12 +6,21 @@ services:
       context: ..
       dockerfile: ./cmd/order_service/v1/Dockerfile
     hostname: order_service
+    environment:
+      REDIS_ADDR: $REDIS_ADDR
+      REDIS_PASSWORD: $REDIS_PASSWORD
+      REDIS_USER: $REDIS_USER
+      REDIS_DB: $REDIS_DB
+      REDIS_MAX_RETRIES: $REDIS_MAX_RETRIES
+      REDIS_RW_TIMEOUT: $REDIS_RW_TIMEOUT
     ports:
       - "8888:8888"
     links:
       - "spot_instrument"
+      - "redis"
     depends_on:
       - spot_instrument
+      - redis
     restart: always
     deploy:
       resources:
@@ -24,9 +33,18 @@ services:
       context: ..
       dockerfile: ./cmd/spot_instrument/v1/Dockerfile
     hostname: spot_instrument
+    environment:
+      REDIS_ADDR: $REDIS_ADDR
+      REDIS_PASSWORD: $REDIS_PASSWORD
+      REDIS_USER: $REDIS_USER
+      REDIS_DB: $REDIS_DB
+      REDIS_MAX_RETRIES: $REDIS_MAX_RETRIES
+      REDIS_RW_TIMEOUT: $REDIS_RW_TIMEOUT
     ports:
       - "9999:9999"
     restart: always
+    links:
+      - "redis"
     deploy:
       resources:
         limits:
@@ -40,6 +58,35 @@ services:
     volumes:
       - ../config/metrics/prometheus:/etc/prometheus
 
+  redis:
+    image: redis:latest
+    container_name: redis_cache_container
+    hostname: redis_cache
+    environment:
+      REDIS_PASSWORD: $REDIS_PASSWORD
+      REDIS_USER: $REDIS_USER
+      REDIS_USER_PASSWORD: $REDIS_USER_PASSWORD
+    ports:
+      - "6379:6379"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    command: >
+      bash -c '
+        mkdir -p /usr/local/etc/redis &&
+        echo "bind 0.0.0.0" > /usr/local/etc/redis/redis.conf &&
+        echo "requirepass $REDIS_PASSWORD" >> /usr/local/etc/redis/redis.conf &&
+        echo "appendonly yes" >> /usr/local/etc/redis/redis.conf &&
+        echo "appendfsync everysec" >> /usr/local/etc/redis/redis.conf &&
+        echo "user default on nopass ~* +@all" > /usr/local/etc/redis/users.acl &&
+        echo "user $REDIS_USER on >$REDIS_USER_PASSWORD ~* +@all" >> /usr/local/etc/redis/users.acl &&
+        redis-server /usr/local/etc/redis/redis.conf --aclfile /usr/local/etc/redis/users.acl
+      '
   # jaeger:
   #   image: jaegertracing/all-in-one
   #   ports:
