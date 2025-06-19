@@ -4,5 +4,5 @@ package order_service;
 option go_package = "github.com/KonnorFrik/BinaryTentacles";
 
 message Market {
-    uint64 id = 1;
+    string id = 1;
 }
