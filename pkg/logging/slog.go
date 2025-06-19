@@ -12,11 +12,12 @@ import (
 	"google.golang.org/grpc"
 )
 
+// Logger - wrapper for slog.Logger.
 type Logger struct {
 	*slog.Logger
 }
 
-// New - Create new 'Logger'
+// New - Create new 'Logger' with predefined settings.
 func New() *Logger {
 	l := &Logger{
 		Logger: slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{})),
@@ -26,10 +27,12 @@ func New() *Logger {
 
 var defaultLogger = New()
 
+// Default - return default Logger.
 func Default() *Logger {
 	return defaultLogger
 }
 
+// UnaryServerInterceptor - logging interceptor based on slog.
 func (l *Logger) UnaryServerInterceptor(
 	ctx context.Context,
 	req any,
@@ -57,6 +60,7 @@ func (l *Logger) UnaryServerInterceptor(
 	return res, err
 }
 
+// UnaryClientInterceptor - logging interceptor based on slog.
 func (l *Logger) UnaryClientInterceptor(
 	ctx context.Context,
 	method string,

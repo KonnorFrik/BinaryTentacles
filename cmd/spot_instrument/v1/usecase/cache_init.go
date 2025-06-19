@@ -19,6 +19,9 @@ func newMarket(enabled bool, delAt time.Time) *market.Market {
 	return &mark
 }
 
+// fill a redis cache with fake markets.
+// 1 valid
+// 3 invalid
 func fill() {
 	var (
 		mark *market.Market

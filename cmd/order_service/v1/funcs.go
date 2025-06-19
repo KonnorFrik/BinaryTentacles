@@ -18,7 +18,7 @@ func InterceptorLogger(l *slog.Logger) logging.Logger {
 	})
 }
 
-// ErrorToCode - Map error to codes.Code for logging
+// ErrorToCode - Map error to codes.Code for logging.
 func ErrorToCode(err error) codes.Code {
 	if err == nil {
 		return codes.OK
@@ -34,7 +34,7 @@ func ErrorToCode(err error) codes.Code {
 }
 
 // RecoveryHandler - Map recovered value to error.
-// For use in "recovery.WithRecoveryHandler"
+// For use in "recovery.WithRecoveryHandler".
 func RecoveryHandler(a any) error {
 	slog.LogAttrs(
 		nil,
@@ -45,7 +45,7 @@ func RecoveryHandler(a any) error {
 	return status.Error(codes.Internal, "Something went wrong")
 }
 
-// WrapError - wrap usecase error into gRPC error with codes
+// WrapError - wrap usecase error into gRPC error with codes.
 func wrapError(err error) error {
 	if err == nil {
 		return nil

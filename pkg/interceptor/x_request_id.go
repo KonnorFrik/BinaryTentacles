@@ -10,15 +10,16 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-type requestIDKey struct{}
-
-const RequestIDHeader = "x-request-id"
+// RequestIDHeader - key for store request id.
+const RequestIDHeader = "X-REQUEST-ID"
 
 var (
-	RequestIDKey = requestIDKey{}
-	logger       = logging.Default()
+	logger = logging.Default()
 )
 
+// UnaryServerXRequestId - add request id (uuid) in context 'ctx' from metadata.
+// If id already exist and valid - set it in context.
+// If if not exist - create new and set.
 func UnaryServerXRequestId(
 	ctx context.Context,
 	req any,
@@ -61,7 +62,7 @@ func UnaryServerXRequestId(
 		)
 	}
 
-	ctx = context.WithValue(ctx, RequestIDKey, id)
+	ctx = context.WithValue(ctx, RequestIDHeader, id)
 	ctx = metadata.AppendToOutgoingContext(ctx, RequestIDHeader, id)
 	logger.LogAttrs(
 		ctx,
@@ -81,6 +82,9 @@ func (sw *serverStreamWrapper) Context() context.Context {
 	return sw.ctx
 }
 
+// StreamServerXRequestId -  add request id (uuid) in context 'ctx' from metadata.
+// If id already exist and valid - set it in context.
+// If if not exist - create new and set.
 func StreamServerXRequestId(
 	srv any,
 	ss grpc.ServerStream,
@@ -121,7 +125,7 @@ func StreamServerXRequestId(
 		)
 	}
 
-	newCtx := context.WithValue(ctx, RequestIDKey, id)
+	newCtx := context.WithValue(ctx, RequestIDHeader, id)
 	wrappedStream := &serverStreamWrapper{
 		ServerStream: ss,
 		ctx:          newCtx,
@@ -130,6 +134,7 @@ func StreamServerXRequestId(
 	return handler(srv, wrappedStream)
 }
 
+// newUUID - create new random uuid.
 func newUUID() (
 	string,
 	error,
@@ -143,6 +148,7 @@ func newUUID() (
 	return result.String(), nil
 }
 
+// getRequestUUID - retrieve request id from context 'ctx' metadata and validate.
 func getRequestUUID(
 	ctx context.Context,
 ) (

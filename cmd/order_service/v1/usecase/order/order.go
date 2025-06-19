@@ -8,6 +8,7 @@ import (
 	pb "github.com/KonnorFrik/BinaryTentacles/internal/generated/order_service/v1"
 )
 
+// Order - some order for stock exchange.
 type Order struct {
 	mut sync.Mutex
 
@@ -20,12 +21,14 @@ type Order struct {
 	Status pb.OrderStatus `json:"status"`
 }
 
+// GetStatus - return status of order 'o'.
 func (o *Order) GetStatus() pb.OrderStatus {
 	o.mut.Lock()
 	defer o.mut.Unlock()
 	return o.Status
 }
 
+// FromGrpcCreateRequest - just copy data from request 'req' in order 'o'.
 func (o *Order) FromGrpcCreateRequest(
 	req *pb.CreateRequest,
 ) *Order {
@@ -36,6 +39,7 @@ func (o *Order) FromGrpcCreateRequest(
 	return o
 }
 
+// ToGrpcCreateResponse - just copy data from order 'o' in response 'resp'.
 func (o *Order) ToGrpcCreateResponse(
 	resp *pb.CreateResponse,
 ) *Order {

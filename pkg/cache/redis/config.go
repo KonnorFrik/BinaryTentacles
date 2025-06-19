@@ -15,8 +15,11 @@ type Config struct {
 	Timeout     time.Duration `env:"REDIS_RW_TIMEOUT" env-required`
 }
 
+// ConfigOption - option for customize the Config object at creation.
 type ConfigOption func(*Config) error
 
+// NewConfig - create a new config for redis.
+// Read values from env as default.
 func NewConfig(opts ...ConfigOption) (Config, error) {
 	var config Config
 	err := cleanenv.ReadEnv(&config)
@@ -32,6 +35,7 @@ func NewConfig(opts ...ConfigOption) (Config, error) {
 	return config, err
 }
 
+// WithDB - ConfigOption for specify redis db number.
 func WithDB(num int) ConfigOption {
 	return func(c *Config) error {
 		c.DB = num

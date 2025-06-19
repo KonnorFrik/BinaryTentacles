@@ -105,6 +105,7 @@ func init() {
 	)
 }
 
+// Create - create a order logic.
 func Create(
 	ctx context.Context,
 	req *pb.CreateRequest,
@@ -141,13 +142,6 @@ func Create(
 	}
 
 	if marketIdCount == 0 {
-		// logger.LogAttrs(
-		// 	nil,
-		// 	slog.LevelError,
-		// 	"[OrderService/Create]",
-		// 	slog.String("Requested market id", req.GetMarketId()),
-		// 	slog.String("Status", "Not found"),
-		// )
 		return nil, fmt.Errorf("%w: found no markets", ErrMarketUnavailable)
 	}
 
@@ -157,24 +151,12 @@ func Create(
 	id, err := uuid.NewV7()
 
 	if err != nil {
-		// logger.LogAttrs(
-		// 	nil,
-		// 	slog.LevelError,
-		// 	"[OrderService/Create]",
-		// 	slog.String("UUIDv7 error", err.Error()),
-		// )
 		return nil, fmt.Errorf("%w: %w", ErrInternal, err)
 	}
 
 	orderJsonBytes, err := json.Marshal(order)
 
 	if err != nil {
-		// logger.LogAttrs(
-		// 	nil,
-		// 	slog.LevelError,
-		// 	"[OrderService/Create]",
-		// 	slog.String("marshal order error", err.Error()),
-		// )
 		return nil, fmt.Errorf("%w: %w", ErrInternal, err)
 	}
 
@@ -182,18 +164,13 @@ func Create(
 	err = orderCache.Set(ctx, order.Id, string(orderJsonBytes), time.Hour)
 
 	if err != nil {
-		// logger.LogAttrs(
-		// 	nil,
-		// 	slog.LevelError,
-		// 	"[OrderService/Create]",
-		// 	slog.String("cache set error", err.Error()),
-		// )
 		return nil, fmt.Errorf("%w: %w", ErrInternal, err)
 	}
 
 	return order, nil
 }
 
+// OrderStatus - return a order status logic.
 func OrderStatus(
 	ctx context.Context,
 	req *pb.OrderStatusRequest,
@@ -205,6 +182,7 @@ func OrderStatus(
 	return order, err
 }
 
+// OrderById - get order from db by it id.
 func OrderById(
 	ctx context.Context,
 	id string,

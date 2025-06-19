@@ -10,16 +10,18 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// Cache - redis cache wrap.
 type Cache struct {
 	conn   *redis.Client
 	logger *slog.Logger
 }
 
 var (
-	// ErrConnection - error with connection for any reason
+	// ErrConnection - error with the connection for any reason
 	ErrConnection = errors.New("connection error")
 )
 
+// New - create a new Cache object.
 func New(ctx context.Context, config Config, opts ...Option) (*Cache, error) {
 	var cache Cache
 
@@ -67,6 +69,8 @@ func New(ctx context.Context, config Config, opts ...Option) (*Cache, error) {
 	return &cache, nil
 }
 
+// Set - write a pair key-value in cache 'c'.
+// ttl same as in redis.
 func (c *Cache) Set(
 	ctx context.Context,
 	key string,
@@ -76,6 +80,7 @@ func (c *Cache) Set(
 	return c.wrapError(c.conn.Set(ctx, key, value, ttl).Err())
 }
 
+// Get - get stored value from cache 'c'.
 func (c *Cache) Get(
 	ctx context.Context,
 	key string,
@@ -93,7 +98,7 @@ func (c *Cache) Get(
 	return res, nil
 }
 
-// Keys - return all keys stored in cache
+// Keys - return all keys stored in cache 'c'.
 func (c *Cache) Keys(
 	ctx context.Context,
 ) (
@@ -124,6 +129,7 @@ func (c *Cache) Keys(
 	return keys, nil
 }
 
+// Values - return all values stored in cache 'c'.
 func (c *Cache) Values(
 	ctx context.Context,
 ) (
@@ -145,6 +151,7 @@ func (c *Cache) Values(
 	return values, nil
 }
 
+// wrapError - log error if it not nil and call wrapError function.
 func (c *Cache) wrapError(err error) error {
 	if err == nil {
 		return nil

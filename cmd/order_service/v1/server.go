@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// Option - option for customize server at creation.
 type Option func(*server) error
 
 type server struct {
@@ -19,6 +20,7 @@ type server struct {
 	logger *slog.Logger
 }
 
+// NewServer - create a new server with options.
 func NewServer(opts ...Option) (*server, error) {
 	var srv server
 
@@ -31,6 +33,7 @@ func NewServer(opts ...Option) (*server, error) {
 	return &srv, nil
 }
 
+// Create - create a new order.
 func (s *server) Create(
 	ctx context.Context,
 	req *pb.CreateRequest,
@@ -50,6 +53,7 @@ func (s *server) Create(
 	return &response, status.Error(codes.OK, "ok")
 }
 
+// OrderStatus - get a order status.
 func (s *server) OrderStatus(
 	ctx context.Context,
 	req *pb.OrderStatusRequest,
@@ -69,6 +73,7 @@ func (s *server) OrderStatus(
 	return &response, status.Error(codes.OK, "ok")
 }
 
+// OrderUpdates - get order's status update in realtime.
 func (s *server) OrderUpdates(
 	req *pb.OrderUpdatesRequest,
 	stream grpc.ServerStreamingServer[pb.OrderUpdatesResponse],
@@ -105,21 +110,25 @@ func (s *server) OrderUpdates(
 	}
 }
 
+// wrapError - log error and call wrapError function.
 func (s *server) wrapError(err error, method string) error {
 	if err == nil {
 		return nil
 	}
 
-	s.logger.LogAttrs(
-		nil,
-		slog.LevelError,
-		"server/"+method,
-		slog.String("error", err.Error()),
-	)
+	if s.logger != nil {
+		s.logger.LogAttrs(
+			nil,
+			slog.LevelError,
+			"server/"+method,
+			slog.String("error", err.Error()),
+		)
+	}
 
 	return wrapError(err)
 }
 
+// WithSlog - create a server with slog.
 func WithSlog(l *slog.Logger) Option {
 	return func(s *server) error {
 		if l == nil {

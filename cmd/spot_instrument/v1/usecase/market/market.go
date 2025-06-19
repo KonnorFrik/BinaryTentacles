@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// Market - some market in stock exchange.
 type Market struct {
 	mut       sync.Mutex
 	Id        string    `json:"id"`
@@ -13,6 +14,8 @@ type Market struct {
 	DeletedAt time.Time `json:"deleted_at"`
 }
 
+// IsActive - check is market active.
+// Must be enabled and not deleted.
 func (m *Market) IsActive() bool {
 	var emptyTime time.Time
 	m.mut.Lock()
@@ -20,6 +23,7 @@ func (m *Market) IsActive() bool {
 	return m.Enabled && m.DeletedAt == emptyTime
 }
 
+// String - implement Stringer interface.
 func (m *Market) String() string {
 	m.mut.Lock()
 	defer m.mut.Unlock()

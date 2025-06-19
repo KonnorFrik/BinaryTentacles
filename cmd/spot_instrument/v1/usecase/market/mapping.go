@@ -4,6 +4,7 @@ import (
 	pb "github.com/KonnorFrik/BinaryTentacles/internal/generated/spot_instrument/v1"
 )
 
+// ToProtobuf - convert Market object in pb.Market object.
 func ToProtobuf(in *Market, out *pb.Market) {
 	if in == nil || out == nil {
 		return
@@ -14,6 +15,7 @@ func ToProtobuf(in *Market, out *pb.Market) {
 	in.mut.Unlock()
 }
 
+// ToProtobufMany - convert many Market objects in pb.Market objects.
 func ToProtobufMany(in []*Market, out []*pb.Market) {
 	if in == nil {
 		return

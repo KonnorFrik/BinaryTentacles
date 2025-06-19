@@ -11,7 +11,8 @@ var (
 	ErrUnknow = errors.New("cache error")
 	// ErrTimeOut - from redis "timed out waiting to get a connection from the connection pool"
 	ErrTimeOut = errors.New("time out")
-	ErrNil     = errors.New("value is nil")
+	// ErrNil - same as redis.Nil
+	ErrNil = errors.New("value is nil")
 )
 
 // wrapError - Map errors from other packages.

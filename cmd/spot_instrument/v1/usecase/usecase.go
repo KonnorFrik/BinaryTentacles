@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 
@@ -19,6 +18,7 @@ var (
 	logger      = logging.Default()
 )
 
+// init a redis connection for store markets.
 func init() {
 	ctx := context.Background()
 	config, err := redCache.NewConfig(
@@ -57,10 +57,7 @@ func init() {
 	fill()
 }
 
-var (
-	ErrNoMarkets = errors.New("no available markets")
-)
-
+// ViewMarkets - return available markets logic.
 func ViewMarkets(
 	ctx context.Context,
 	req *pb.ViewMarketsRequest,

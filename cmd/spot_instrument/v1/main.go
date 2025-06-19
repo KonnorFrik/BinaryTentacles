@@ -4,14 +4,11 @@ Simple gRPC user_auth server implemented user_auth/v1
 package main
 
 import (
-	"context"
 	"log/slog"
 	"net"
 
 	loggingWrap "github.com/KonnorFrik/BinaryTentacles/pkg/logging"
 
-	"github.com/KonnorFrik/BinaryTentacles/cmd/spot_instrument/v1/usecase"
-	"github.com/KonnorFrik/BinaryTentacles/cmd/spot_instrument/v1/usecase/market"
 	pb "github.com/KonnorFrik/BinaryTentacles/internal/generated/spot_instrument/v1"
 	interceptor "github.com/KonnorFrik/BinaryTentacles/pkg/interceptor"
 
@@ -20,10 +17,6 @@ import (
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"google.golang.org/grpc"
 )
-
-type server struct {
-	pb.UnimplementedSpotInstrumentServiceServer
-}
 
 var (
 	logger = loggingWrap.Default()
@@ -84,23 +77,4 @@ func main() {
 		)
 		return
 	}
-}
-
-func (s *server) ViewMarkets(
-	ctx context.Context,
-	req *pb.ViewMarketsRequest,
-) (
-	*pb.ViewMarketsResponse,
-	error,
-) {
-	markets, err := usecase.ViewMarkets(ctx, req)
-
-	if err != nil {
-		return nil, WrapError(err)
-	}
-
-	var resp pb.ViewMarketsResponse
-	resp.Market = make([]*pb.Market, len(markets))
-	market.ToProtobufMany(markets, resp.Market)
-	return &resp, nil
 }
