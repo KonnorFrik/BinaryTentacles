@@ -42,7 +42,7 @@ install_deps:
 
 # build - build all .cmd/<name>/<version>/*.go files
 # require name and ver 
-build: check_name
+build: check_name #generate
 	go build -o cmd/$(name)/v$(version)/$(name) cmd/$(name)/v$(version)/*.go
 
 version=$(ver)
@@ -58,7 +58,7 @@ PROTO_OUTPUT_DIR=$(DEFAULT_GENERATED_PATH)/$(name)/v$(version)
 PROTO_INPUT_FILES=$(wildcard $(PROTO_INPUT_DIR)/*.proto)
 
 # generate - generate a gRPC stubs from given $(name)/v$(version) folder
-generate: check_name check_proto_input_dir_file
+generate: check_name check_proto_input_dir_file #install_deps
 	mkdir -p $(PROTO_OUTPUT_DIR)
 	protoc -I $(PROTO_INPUT_DIR) \
 		--go_out=$(PROTO_OUTPUT_DIR) --go_opt=paths=source_relative \
