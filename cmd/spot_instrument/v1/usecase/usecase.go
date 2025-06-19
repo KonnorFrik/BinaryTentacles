@@ -9,53 +9,12 @@ import (
 	"github.com/KonnorFrik/BinaryTentacles/cmd/spot_instrument/v1/usecase/market"
 	pb "github.com/KonnorFrik/BinaryTentacles/internal/generated/spot_instrument/v1"
 
-	redCache "github.com/KonnorFrik/BinaryTentacles/pkg/cache/redis"
 	"github.com/KonnorFrik/BinaryTentacles/pkg/logging"
 )
 
 var (
-	marketCache *redCache.Cache
-	logger      = logging.Default()
+	logger = logging.Default()
 )
-
-// init a redis connection for store markets.
-func init() {
-	ctx := context.Background()
-	config, err := redCache.NewConfig(
-		redCache.WithDB(1),
-	)
-
-	if err != nil {
-		logger.LogAttrs(
-			ctx,
-			slog.LevelError,
-			"[SpotInstrument/usecase/init redis]",
-			slog.String("Read config", err.Error()),
-		)
-		return
-	}
-
-	marketCache, err = redCache.New(ctx, config, redCache.WithSlog(logger.Logger))
-
-	if err != nil {
-		logger.LogAttrs(
-			ctx,
-			slog.LevelError,
-			"[SpotInstrument/usecase/init redis]",
-			slog.String("Connection", err.Error()),
-		)
-		return
-	}
-
-	logger.LogAttrs(
-		ctx,
-		slog.LevelInfo,
-		"[SpotInstrument/usecase/init redis]",
-		slog.String("Connection", "Successfull"),
-	)
-
-	fill()
-}
 
 // ViewMarkets - return available markets logic.
 func ViewMarkets(
