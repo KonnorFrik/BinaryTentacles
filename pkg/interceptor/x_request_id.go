@@ -94,7 +94,7 @@ func StreamServerXRequestId(
 		logger.LogAttrs(
 			ctx,
 			slog.LevelInfo,
-			"[Interceptor/X-Request-ID]",
+			"[X-REQUEST-ID]",
 			slog.String("UUID", id),
 		)
 
@@ -105,7 +105,7 @@ func StreamServerXRequestId(
 		logger.LogAttrs(
 			ctx,
 			slog.LevelError,
-			"[Interceptro/X-Request-ID]",
+			"[X-REQUEST-ID]",
 			slog.String("Create-UUID Error", err.Error()),
 		)
 	}
@@ -116,7 +116,7 @@ func StreamServerXRequestId(
 		logger.LogAttrs(
 			ctx,
 			slog.LevelError,
-			"[Interceptor/X-Request-ID]",
+			"[X-REQUEST-ID]",
 			slog.String("ID Create error", err.Error()),
 		)
 	}
@@ -127,7 +127,7 @@ func StreamServerXRequestId(
 		ctx:          newCtx,
 	}
 
-	return handler(wrappedStream, ss)
+	return handler(srv, wrappedStream)
 }
 
 func newUUID() (
