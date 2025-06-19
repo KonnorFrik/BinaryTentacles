@@ -36,11 +36,21 @@ func ErrorToCode(err error) codes.Code {
 // RecoveryHandler - Map recovered value to error.
 // For use in "recovery.WithRecoveryHandler"
 func RecoveryHandler(a any) error {
+	slog.LogAttrs(
+		nil,
+		slog.LevelError,
+		"[RECOVERY]",
+		slog.Any("recovered with", a),
+	)
 	return status.Error(codes.Internal, "Something went wrong")
 }
 
 // WrapError - wrap usecase error into gRPC error with codes
-func WrapError(err error) error {
+func wrapError(err error) error {
+	if err == nil {
+		return nil
+	}
+
 	var code = codes.Internal
 	var msg string
 
@@ -51,12 +61,12 @@ func WrapError(err error) error {
 	case errors.Is(err, usecase.ErrMarketUnavailable):
 		code = codes.FailedPrecondition
 		msg = "market is unavailable"
-		// case errors.Is(err, usecase.ErrInvalidData):
-		// 	code = codes.InvalidArgument
-		// case errors.Is(err, usecase.ErrDbNoAccess):
-		// 	// default = Internal
-		// case errors.Is(err, usecase.ErrUnknown):
-		// default = Internal
+	case errors.Is(err, usecase.ErrUnknown):
+		code = codes.Internal
+		msg = "something went wrong"
+	case errors.Is(err, usecase.ErrInternal):
+		code = codes.Internal
+		msg = "something went wrong"
 	}
 
 	return status.Error(code, msg)

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	client "github.com/KonnorFrik/BinaryTentacles/internal/generated/order_service/v1"
+	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -14,16 +15,15 @@ import (
 )
 
 const (
-	marketIdValid      uint64 = 0
-	marketIdInvalidMax uint64 = 3
-
+	marketIdValid    = "5d6f8857-fafe-432c-8380-2b340ec03bb7"
 	orderServiceAddr = "0.0.0.0:8888"
 )
 
 var (
 	orderService client.OrderServiceClient
 	baseCtx      = context.Background()
-	orderId      uint64
+	orderId      string
+	userID       string
 )
 
 func init() {
@@ -40,6 +40,16 @@ func init() {
 	orderService = client.NewOrderServiceClient(conn)
 }
 
+func init() {
+	id, err := uuid.NewV7()
+
+	if err != nil {
+		panic(err)
+	}
+
+	userID = id.String()
+}
+
 func TestCRUD(t *testing.T) {
 	cases := []struct {
 		name string
@@ -49,10 +59,10 @@ func TestCRUD(t *testing.T) {
 			name: "Create order with valid market",
 			f: func(t *testing.T) {
 				req := client.CreateRequest{
-					UserId:    0,
+					UserId:    userID,
 					MarketId:  marketIdValid,
 					OrderType: client.OrderType_ORDER_TYPE_T1,
-					Price:     1.23,
+					Price:     123,
 					Quantity:  1,
 				}
 				resp, err := orderService.Create(baseCtx, &req)
@@ -74,7 +84,7 @@ func TestCRUD(t *testing.T) {
 			f: func(t *testing.T) {
 				req := client.OrderStatusRequest{
 					OrderId: orderId,
-					UserId:  0,
+					UserId:  userID,
 				}
 				resp, err := orderService.OrderStatus(baseCtx, &req)
 
@@ -92,10 +102,10 @@ func TestCRUD(t *testing.T) {
 			name: "Create order with invalid market",
 			f: func(t *testing.T) {
 				req := client.CreateRequest{
-					UserId:    0,
-					MarketId:  1,
+					UserId:    userID,
+					MarketId:  "",
 					OrderType: client.OrderType_ORDER_TYPE_T1,
-					Price:     1.23,
+					Price:     123,
 					Quantity:  1,
 				}
 				_, err := orderService.Create(baseCtx, &req)
@@ -120,10 +130,10 @@ func TestCRUD(t *testing.T) {
 			name: "Create order with invalid market",
 			f: func(t *testing.T) {
 				req := client.CreateRequest{
-					UserId:    0,
-					MarketId:  2,
+					UserId:    userID,
+					MarketId:  "1234",
 					OrderType: client.OrderType_ORDER_TYPE_T1,
-					Price:     1.23,
+					Price:     123,
 					Quantity:  1,
 				}
 				_, err := orderService.Create(baseCtx, &req)
@@ -148,38 +158,10 @@ func TestCRUD(t *testing.T) {
 			name: "Create order with invalid market",
 			f: func(t *testing.T) {
 				req := client.CreateRequest{
-					UserId:    0,
-					MarketId:  3,
+					UserId:    userID,
+					MarketId:  uuid.NewString(),
 					OrderType: client.OrderType_ORDER_TYPE_T1,
-					Price:     1.23,
-					Quantity:  1,
-				}
-				_, err := orderService.Create(baseCtx, &req)
-
-				if err == nil {
-					t.Fatalf("Got nil error")
-				}
-
-				stat, ok := status.FromError(err)
-
-				if !ok {
-					t.Fatalf("Error on convert status from error: %q\n", err)
-				}
-
-				if stat.Code() != codes.FailedPrecondition {
-					t.Fatalf("Got = %d, Want = %d\n", stat.Code(), codes.FailedPrecondition)
-				}
-			},
-		},
-
-		{
-			name: "Create order with invalid market",
-			f: func(t *testing.T) {
-				req := client.CreateRequest{
-					UserId:    0,
-					MarketId:  marketIdInvalidMax,
-					OrderType: client.OrderType_ORDER_TYPE_T1,
-					Price:     1.23,
+					Price:     123,
 					Quantity:  1,
 				}
 				_, err := orderService.Create(baseCtx, &req)
@@ -209,7 +191,7 @@ func TestCRUD(t *testing.T) {
 func TestStream(t *testing.T) {
 	req := client.OrderUpdatesRequest{
 		OrderId: orderId,
-		UserId:  0,
+		UserId:  userID,
 		DelayMs: (time.Millisecond * 300).Milliseconds(),
 	}
 	stream, err := orderService.OrderUpdates(baseCtx, &req)

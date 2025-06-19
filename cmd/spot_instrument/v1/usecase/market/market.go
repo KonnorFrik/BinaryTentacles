@@ -8,9 +8,9 @@ import (
 
 type Market struct {
 	mut       sync.Mutex
-	Id        uint64
-	Enabled   bool
-	DeletedAt time.Time
+	Id        string    `json:"id"`
+	Enabled   bool      `json:"enabled"`
+	DeletedAt time.Time `json:"deleted_at"`
 }
 
 func (m *Market) IsActive() bool {
@@ -23,5 +23,5 @@ func (m *Market) IsActive() bool {
 func (m *Market) String() string {
 	m.mut.Lock()
 	defer m.mut.Unlock()
-	return fmt.Sprintf("Market(ID:%d, Enabled:%t, DeletedAt:%v", m.Id, m.Enabled, m.DeletedAt)
+	return fmt.Sprintf("Market(ID:%s, Enabled:%t, DeletedAt:%v", m.Id, m.Enabled, m.DeletedAt)
 }

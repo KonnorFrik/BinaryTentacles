@@ -11,13 +11,13 @@ import (
 type Order struct {
 	mut sync.Mutex
 
-	Id       uint64
-	MarketId uint64
-	Type     pb.OrderType
-	Price    float64
-	Quantity uint64
+	Id       string       `json:"id"`
+	MarketId string       `json:"market_id"`
+	Type     pb.OrderType `json:"type"`
+	Price    int64        `json:"price"`
+	Quantity uint64       `json:"quantity"`
 
-	Status pb.OrderStatus
+	Status pb.OrderStatus `json:"status"`
 }
 
 func (o *Order) GetStatus() pb.OrderStatus {
@@ -59,6 +59,7 @@ func (o *Order) UpdateStatus(
 			var orderStatus pb.OrderStatus = o.Status
 
 			if o.Status == pb.OrderStatus_ORDER_STATUS_CONFIRM || o.Status == pb.OrderStatus_ORDER_STATUS_REJECT {
+				o.mut.Unlock()
 				break
 			}
 

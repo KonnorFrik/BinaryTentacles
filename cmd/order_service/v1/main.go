@@ -4,11 +4,9 @@ Simple gRPC user_auth server implemented user_auth/v1
 package main
 
 import (
-	"context"
 	"log/slog"
 	"net"
 
-	"github.com/KonnorFrik/BinaryTentacles/cmd/order_service/v1/usecase"
 	pb "github.com/KonnorFrik/BinaryTentacles/internal/generated/order_service/v1"
 	interceptor "github.com/KonnorFrik/BinaryTentacles/pkg/interceptor"
 	loggingWrap "github.com/KonnorFrik/BinaryTentacles/pkg/logging"
@@ -17,16 +15,10 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
-type server struct {
-	pb.UnimplementedOrderServiceServer
-}
-
 var (
-	logger = loggingWrap.Default()
+// logger = loggingWrap.Default()
 )
 
 const (
@@ -34,6 +26,7 @@ const (
 )
 
 func main() {
+	logger := loggingWrap.Default()
 	listener, err := net.Listen("tcp", laddr)
 
 	if err != nil {
@@ -47,7 +40,9 @@ func main() {
 		return
 	}
 
-	userServer := &server{}
+	userServer, err := NewServer(
+		WithSlog(logger.Logger),
+	)
 	grpcServer := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			grpc_prometheus.UnaryServerInterceptor,
@@ -89,77 +84,5 @@ func main() {
 			slog.String("error", err.Error()),
 		)
 		return
-	}
-}
-
-func (s *server) Create(
-	ctx context.Context,
-	req *pb.CreateRequest,
-) (
-	*pb.CreateResponse,
-	error,
-) {
-	order, err := usecase.Create(ctx, req)
-
-	if err != nil {
-		return nil, WrapError(err)
-	}
-
-	var response pb.CreateResponse
-	order.ToGrpcCreateResponse(&response)
-	return &response, status.Error(codes.OK, "ok")
-}
-
-func (s *server) OrderStatus(
-	ctx context.Context,
-	req *pb.OrderStatusRequest,
-) (
-	*pb.OrderStatusResponse,
-	error,
-) {
-	order, err := usecase.OrderStatus(ctx, req)
-
-	if err != nil {
-		return nil, WrapError(err)
-	}
-
-	var response pb.OrderStatusResponse
-	response.Status = order.GetStatus()
-	return &response, status.Error(codes.OK, "ok")
-}
-
-func (s *server) OrderUpdates(
-	req *pb.OrderUpdatesRequest,
-	stream grpc.ServerStreamingServer[pb.OrderUpdatesResponse],
-) error {
-
-	order, err := usecase.OrderById(stream.Context(), req.GetOrderId())
-
-	if err != nil {
-		return WrapError(err)
-	}
-
-	statuses := order.UpdateStatus(stream.Context())
-
-	for {
-		var (
-			resp     = new(pb.OrderUpdatesResponse)
-			isClosed bool
-		)
-
-		select {
-		case <-stream.Context().Done():
-			return nil
-		case resp.Status, isClosed = <-statuses:
-		}
-
-		if isClosed {
-			return nil
-		}
-
-		if e := stream.Send(resp); e != nil {
-			// TODO: catch a closed by a client connection
-			return e
-		}
 	}
 }

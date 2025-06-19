@@ -2,73 +2,59 @@ package usecase
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
-	"strconv"
-	"time"
 
 	"github.com/KonnorFrik/BinaryTentacles/cmd/spot_instrument/v1/usecase/market"
 	pb "github.com/KonnorFrik/BinaryTentacles/internal/generated/spot_instrument/v1"
-	db "github.com/KonnorFrik/BinaryTentacles/pkg/fake_db"
+
+	redCache "github.com/KonnorFrik/BinaryTentacles/pkg/cache/redis"
 	"github.com/KonnorFrik/BinaryTentacles/pkg/logging"
 )
 
 var (
-	fakeDb = db.New()
-	logger = logging.Default()
+	marketCache *redCache.Cache
+	logger      = logging.Default()
 )
 
 func init() {
-	var (
-		mark *market.Market
-		ctx  = context.Background()
-	)
-	mark = new(market.Market)
-	mark.Enabled = true
-	mark.Id = fakeDb.Create(ctx, mark)
-	logger.LogAttrs(
-		nil,
-		slog.LevelInfo,
-		"[SpotInstrument/init]",
-		slog.String("Created valid market with id", strconv.FormatUint(mark.Id, 10)),
+	ctx := context.Background()
+	config, err := redCache.NewConfig(
+		redCache.WithDB(1),
 	)
 
-	mark = new(market.Market)
-	mark.Enabled = true
-	mark.DeletedAt = time.Now()
-	mark.Id = fakeDb.Create(ctx, mark)
-	logger.LogAttrs(
-		nil,
-		slog.LevelInfo,
-		"[SpotInstrument/init]",
-		slog.String("Created invalid market with id", strconv.FormatUint(mark.Id, 10)),
-	)
+	if err != nil {
+		logger.LogAttrs(
+			ctx,
+			slog.LevelError,
+			"[SpotInstrument/usecase/init redis]",
+			slog.String("Read config", err.Error()),
+		)
+		return
+	}
 
-	mark = new(market.Market)
-	mark.DeletedAt = time.Now()
-	mark.Id = fakeDb.Create(ctx, mark)
-	logger.LogAttrs(
-		nil,
-		slog.LevelInfo,
-		"[SpotInstrument/init]",
-		slog.String("Created invalid market with id", strconv.FormatUint(mark.Id, 10)),
-	)
+	marketCache, err = redCache.New(ctx, config, redCache.WithSlog(logger.Logger))
 
-	mark = new(market.Market)
-	mark.Id = fakeDb.Create(ctx, mark)
-	logger.LogAttrs(
-		nil,
-		slog.LevelInfo,
-		"[SpotInstrument/init]",
-		slog.String("Created invalid market with id", strconv.FormatUint(mark.Id, 10)),
-	)
+	if err != nil {
+		logger.LogAttrs(
+			ctx,
+			slog.LevelError,
+			"[SpotInstrument/usecase/init redis]",
+			slog.String("Connection", err.Error()),
+		)
+		return
+	}
 
 	logger.LogAttrs(
-		nil,
+		ctx,
 		slog.LevelInfo,
-		"[SpotInstrument/init]",
-		slog.String("fakeDB status", "filled with mock objects"),
+		"[SpotInstrument/usecase/init redis]",
+		slog.String("Connection", "Successfull"),
 	)
+
+	fill()
 }
 
 var (
@@ -82,17 +68,59 @@ func ViewMarkets(
 	[]*market.Market,
 	error,
 ) {
-	var markets []*market.Market
-	allMarkets := db.All[*market.Market](ctx, fakeDb)
+	all, err := marketCache.Values(ctx)
 
-	for _, m := range allMarkets {
-		if m.IsActive() {
-			markets = append(markets, m)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrInternal, err)
+	}
+
+	if len(all) == 0 {
+		logger.LogAttrs(
+			ctx,
+			slog.LevelError,
+			"[SpotInstrument/ViewMarkets/GetJSONMarkets",
+			slog.String("error", "Got 0 markets from redis"),
+		)
+		return nil, ErrNoMarkets
+	}
+
+	var marketsJson = make([]string, 0, len(all))
+
+	for _, v := range all {
+		mark, ok := v.(string)
+
+		if ok {
+			marketsJson = append(marketsJson, mark)
+
+		} else {
+			logger.LogAttrs(
+				ctx,
+				slog.LevelError,
+				"[SpotInstrument/ViewMarkets/ConvertToStr",
+				slog.String("error", fmt.Sprintf("<%T, %[1]+v> Not string", v)),
+			)
 		}
 	}
 
-	if len(markets) == 0 {
-		return nil, ErrNoMarkets
+	var (
+		markets = make([]*market.Market, len(marketsJson))
+		ind     int
+	)
+
+	for _, v := range marketsJson {
+		err = json.Unmarshal([]byte(v), &markets[ind])
+
+		if err == nil {
+			ind++
+
+		} else {
+			logger.LogAttrs(
+				ctx,
+				slog.LevelError,
+				"[SpotInstrument/ViewMarkets/Unmarshal",
+				slog.String("error", err.Error()),
+			)
+		}
 	}
 
 	return markets, nil

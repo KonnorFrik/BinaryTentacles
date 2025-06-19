@@ -22,6 +22,7 @@ func ToProtobufMany(in []*Market, out []*pb.Market) {
 	maxInd := max(len(in), len(out))
 
 	for i := range maxInd {
+		out[i] = new(pb.Market)
 		ToProtobuf(in[i], out[i])
 	}
 }
