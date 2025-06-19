@@ -4,10 +4,18 @@ Simple gRPC user_auth server implemented user_auth/v1
 package main
 
 import (
+	"context"
 	"log/slog"
 	"net"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
+	"time"
 
+	"github.com/KonnorFrik/BinaryTentacles/cmd/order_service/v1/usecase"
 	pb "github.com/KonnorFrik/BinaryTentacles/internal/generated/order_service/v1"
+	callChain "github.com/KonnorFrik/BinaryTentacles/pkg/call_chain"
 	interceptor "github.com/KonnorFrik/BinaryTentacles/pkg/interceptor"
 	loggingWrap "github.com/KonnorFrik/BinaryTentacles/pkg/logging"
 
@@ -17,15 +25,16 @@ import (
 	"google.golang.org/grpc"
 )
 
-var (
-// logger = loggingWrap.Default()
-)
+// TODO: implement gracefull shutdown
 
 const (
 	laddr = ":8888"
 )
 
 func main() {
+	osSignalChan := make(chan os.Signal, 3)
+	signal.Notify(osSignalChan, os.Interrupt, syscall.SIGKILL, syscall.SIGTERM)
+
 	logger := loggingWrap.Default()
 	listener, err := net.Listen("tcp", laddr)
 
@@ -74,6 +83,49 @@ func main() {
 		slog.String("Local address", laddr),
 	)
 
+	gracefullShutdownChain := callChain.New(
+		func(ctx context.Context) error {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
+
+			grpcServer.GracefulStop()
+			return nil
+		},
+		usecase.ShutdownOrderCache,
+	)
+
+	var chainGroup sync.WaitGroup
+	chainGroup.Add(1)
+
+	go func() {
+		defer chainGroup.Done()
+		<-osSignalChan
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+		defer cancel()
+		ind, err := gracefullShutdownChain.Call(ctx)
+
+		if err != nil {
+			logger.LogAttrs(
+				nil,
+				slog.LevelError,
+				"GracefullShutdownChain",
+				slog.Int("stopped at", ind),
+				slog.String("with error", err.Error()),
+			)
+			return
+		}
+
+		logger.LogAttrs(
+			nil,
+			slog.LevelInfo,
+			"GracefullShutdownChain",
+			slog.String("status", "successfull"),
+		)
+	}()
+
 	err = grpcServer.Serve(listener)
 
 	if err != nil {
@@ -85,4 +137,6 @@ func main() {
 		)
 		return
 	}
+
+	chainGroup.Wait()
 }

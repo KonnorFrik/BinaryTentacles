@@ -23,7 +23,6 @@ const (
 )
 
 var (
-	orderCache     *redCache.Cache
 	spotInstrument client.SpotInstrumentServiceClient
 	logger         = logging.Default()
 )
@@ -38,43 +37,6 @@ var (
 	// ErrInternal - indicate errors for any reason in OrderSevice/usecase logic
 	ErrInternal = errors.New("internal")
 )
-
-// init a redis connection for store orders
-func init() {
-	ctx := context.Background()
-	config, err := redCache.NewConfig(
-		redCache.WithDB(0),
-	)
-
-	if err != nil {
-		logger.LogAttrs(
-			ctx,
-			slog.LevelError,
-			"[OrderSevice/usecase/init redis]",
-			slog.String("Read config", err.Error()),
-		)
-		return
-	}
-
-	orderCache, err = redCache.New(ctx, config, redCache.WithSlog(logger.Logger))
-
-	if err != nil {
-		logger.LogAttrs(
-			ctx,
-			slog.LevelError,
-			"[OrderSevice/usecase/init redis]",
-			slog.String("Connection", err.Error()),
-		)
-		return
-	}
-
-	logger.LogAttrs(
-		ctx,
-		slog.LevelInfo,
-		"[OrderSevice/usecase/init redis]",
-		slog.String("Connection", "Successfull"),
-	)
-}
 
 // init a grpc connection with spot instrument service
 func init() {
@@ -113,6 +75,10 @@ func Create(
 	*order.Order,
 	error,
 ) {
+	if e := uuid.Validate(req.MarketId); e != nil {
+		return nil, fmt.Errorf("%w: requested market id is invalid", ErrMarketUnavailable)
+	}
+
 	clientReq := client.ViewMarketsRequest{
 		UserRole: client.UserRole_USER_ROLE_CUSTOMER,
 	}
@@ -135,6 +101,7 @@ func Create(
 		marketIdRequest = req.GetMarketId()
 	)
 
+	// TODO: implement spot_instrument.IsAvailable(market_uuid) bool instead this.
 	for _, m := range marketsResponse.Market {
 		if marketIdRequest == m.GetId() {
 			marketIdCount++

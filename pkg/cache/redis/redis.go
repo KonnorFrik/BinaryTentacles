@@ -151,6 +151,41 @@ func (c *Cache) Values(
 	return values, nil
 }
 
+// Shutdown - shutdown a redis cache.
+func (c *Cache) Close(
+	ctx context.Context,
+) error {
+	err := c.conn.Close()
+
+	if c.logger != nil {
+		defer func() {
+			var (
+				lvl    = slog.LevelInfo
+				errMsg string
+			)
+
+			if err != nil {
+				errMsg = err.Error()
+				lvl = slog.LevelError
+			}
+
+			c.logger.LogAttrs(
+				ctx,
+				lvl,
+				"[redis cache]",
+				slog.String("event", "shutdown"),
+				slog.String("with error", errMsg),
+			)
+		}()
+	}
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // wrapError - log error if it not nil and call wrapError function.
 func (c *Cache) wrapError(err error) error {
 	if err == nil {
