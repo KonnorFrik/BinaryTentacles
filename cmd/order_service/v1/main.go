@@ -25,28 +25,25 @@ import (
 	"google.golang.org/grpc"
 )
 
-// TODO: implement gracefull shutdown
-
 const (
 	laddr = ":8888"
 )
 
 func main() {
-	osSignalChan := make(chan os.Signal, 3)
+	osSignalChan := make(chan os.Signal, 6)
 	signal.Notify(osSignalChan, os.Interrupt, syscall.SIGKILL, syscall.SIGTERM)
 
 	logger := loggingWrap.Default()
 	listener, err := net.Listen("tcp", laddr)
 
 	if err != nil {
-		logger.Error("[Server/Listen]", "error", err)
 		logger.LogAttrs(
 			nil,
 			slog.LevelError,
 			"[Server/Listen]",
 			slog.String("error", err.Error()),
 		)
-		return
+		os.Exit(1)
 	}
 
 	userServer, err := NewServer(
@@ -103,6 +100,12 @@ func main() {
 	go func() {
 		defer chainGroup.Done()
 		<-osSignalChan
+		logger.LogAttrs(
+			nil,
+			slog.LevelInfo,
+			"[GracefullShutdownChain]",
+			slog.String("status", "start"),
+		)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 		defer cancel()
 		ind, err := gracefullShutdownChain.Call(ctx)
@@ -111,7 +114,7 @@ func main() {
 			logger.LogAttrs(
 				nil,
 				slog.LevelError,
-				"GracefullShutdownChain",
+				"[GracefullShutdownChain]",
 				slog.Int("stopped at", ind),
 				slog.String("with error", err.Error()),
 			)
@@ -121,7 +124,7 @@ func main() {
 		logger.LogAttrs(
 			nil,
 			slog.LevelInfo,
-			"GracefullShutdownChain",
+			"[GracefullShutdownChain]",
 			slog.String("status", "successfull"),
 		)
 	}()
@@ -135,7 +138,7 @@ func main() {
 			"[Server/Serve]",
 			slog.String("error", err.Error()),
 		)
-		return
+		os.Exit(1)
 	}
 
 	chainGroup.Wait()

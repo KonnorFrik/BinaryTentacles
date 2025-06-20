@@ -1,5 +1,5 @@
 /*
-Simple gRPC user_auth server implemented user_auth/v1
+Simple gRPC 'spot instrument' server implemented spot_instrument/v1
 */
 package main
 
@@ -26,27 +26,39 @@ import (
 	"google.golang.org/grpc"
 )
 
-// TODO: implement gracefull shutdown
-var (
-	logger = loggingWrap.Default()
-)
-
 const (
 	laddr = ":9999"
 )
 
 func main() {
-	osSignalChan := make(chan os.Signal, 3)
+	logger := loggingWrap.Default()
+	osSignalChan := make(chan os.Signal, 6)
 	signal.Notify(osSignalChan, os.Interrupt, syscall.SIGKILL, syscall.SIGTERM)
 
 	listener, err := net.Listen("tcp", laddr)
 
 	if err != nil {
-		logger.Error("[Server/Listen]", "error", err)
-		return
+		logger.LogAttrs(
+			nil,
+			slog.LevelError,
+			"[Server/Listen]",
+			slog.String("error", err.Error()),
+		)
+		os.Exit(1)
 	}
 
-	userServer := &server{}
+	userServer, err := New(WithSlog(logger.Logger))
+
+	if err != nil {
+		logger.LogAttrs(
+			nil,
+			slog.LevelError,
+			"[Server/Create]",
+			slog.String("error", err.Error()),
+		)
+		os.Exit(1)
+	}
+
 	grpcServer := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			grpc_prometheus.UnaryServerInterceptor,
@@ -74,7 +86,7 @@ func main() {
 	logger.LogAttrs(
 		nil,
 		slog.LevelInfo,
-		"Listen at",
+		"[Server/Listen at]",
 		slog.String("local address", laddr),
 	)
 
@@ -98,6 +110,12 @@ func main() {
 	go func() {
 		defer chainGroup.Done()
 		<-osSignalChan
+		logger.LogAttrs(
+			nil,
+			slog.LevelInfo,
+			"[GracefullShutdownChain]",
+			slog.String("status", "start"),
+		)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 		defer cancel()
 		ind, err := gracefullShutdownChain.Call(ctx)
@@ -106,7 +124,7 @@ func main() {
 			logger.LogAttrs(
 				nil,
 				slog.LevelError,
-				"GracefullShutdownChain",
+				"[GracefullShutdownChain]",
 				slog.Int("stopped at", ind),
 				slog.String("with error", err.Error()),
 			)
@@ -116,7 +134,7 @@ func main() {
 		logger.LogAttrs(
 			nil,
 			slog.LevelInfo,
-			"GracefullShutdownChain",
+			"[GracefullShutdownChain]",
 			slog.String("status", "successfull"),
 		)
 	}()
@@ -127,10 +145,10 @@ func main() {
 		logger.LogAttrs(
 			nil,
 			slog.LevelError,
-			"Serve",
+			"[Server/Serve]",
 			slog.String("error", err.Error()),
 		)
-		return
+		os.Exit(1)
 	}
 
 	chainGroup.Wait()

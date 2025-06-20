@@ -79,11 +79,12 @@ func Create(
 		return nil, fmt.Errorf("%w: requested market id is invalid", ErrMarketUnavailable)
 	}
 
-	clientReq := client.ViewMarketsRequest{
+	clientReq := client.IsAvailableRequest{
 		UserRole: client.UserRole_USER_ROLE_CUSTOMER,
+		MarketId: req.GetMarketId(),
 	}
 	// TODO: cache this
-	marketsResponse, err := spotInstrument.ViewMarkets(ctx, &clientReq)
+	available, err := spotInstrument.IsAvailable(ctx, &clientReq)
 
 	if err != nil {
 		logger.LogAttrs(
@@ -93,45 +94,33 @@ func Create(
 			slog.String("Call", "SpotInstrumentService.ViewMarkets"),
 			slog.String("Error", err.Error()),
 		)
-		return nil, fmt.Errorf("%w: SpotInstrumentService: %w", ErrInternal, err)
+		return nil, fmt.Errorf("%w: SpotInstrumentService reason: %w", ErrMarketUnavailable, err)
 	}
 
-	var (
-		marketIdCount   int
-		marketIdRequest = req.GetMarketId()
-	)
-
-	// TODO: implement spot_instrument.IsAvailable(market_uuid) bool instead this.
-	for _, m := range marketsResponse.Market {
-		if marketIdRequest == m.GetId() {
-			marketIdCount++
-		}
-	}
-
-	if marketIdCount == 0 {
-		return nil, fmt.Errorf("%w: found no markets", ErrMarketUnavailable)
+	if !available.GetIsAvailable() {
+		return nil, ErrMarketUnavailable
 	}
 
 	var order = new(order.Order)
 	order.FromGrpcCreateRequest(req)
 	order.Status = pb.OrderStatus_ORDER_STATUS_CREATED
-	id, err := uuid.NewV7()
+	orderId, err := uuid.NewV7()
 
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrInternal, err)
+		return nil, fmt.Errorf("%w: UUID create: %w", ErrInternal, err)
 	}
 
 	orderJsonBytes, err := json.Marshal(order)
 
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrInternal, err)
+		return nil, fmt.Errorf("%w: Order marshal: %w", ErrInternal, err)
 	}
 
-	order.Id = id.String()
+	order.Id = orderId.String()
 	err = orderCache.Set(ctx, order.Id, string(orderJsonBytes), time.Hour)
 
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrInternal, err)
+		return nil, fmt.Errorf("%w: Order save: %w", ErrInternal, err)
 	}
 
 	return order, nil

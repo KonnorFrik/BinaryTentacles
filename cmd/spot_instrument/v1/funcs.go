@@ -41,13 +41,27 @@ func RecoveryHandler(a any) error {
 
 // wrapError - wrap usecase error into gRPC error with codes.
 func wrapError(err error) error {
+	if err == nil {
+		return nil
+	}
+
 	var code = codes.Internal
 	var msg string
 
 	switch {
+	case errors.Is(err, usecase.ErrInternal):
+		// default - Internal
+		msg = "somethind went wrong"
+
 	case errors.Is(err, usecase.ErrNoMarkets):
 		code = codes.NotFound
-		msg = "no available markets"
+		msg = err.Error()
+	case errors.Is(err, usecase.ErrInvalidInput):
+		code = codes.InvalidArgument
+		msg = err.Error()
+	case errors.Is(err, usecase.ErrForbidden):
+		code = codes.PermissionDenied
+		msg = err.Error()
 	}
 
 	return status.Error(code, msg)

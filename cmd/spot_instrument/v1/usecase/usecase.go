@@ -8,7 +8,9 @@ import (
 
 	"github.com/KonnorFrik/BinaryTentacles/cmd/spot_instrument/v1/usecase/market"
 	pb "github.com/KonnorFrik/BinaryTentacles/internal/generated/spot_instrument/v1"
+	"github.com/google/uuid"
 
+	"github.com/KonnorFrik/BinaryTentacles/pkg/cache/redis"
 	"github.com/KonnorFrik/BinaryTentacles/pkg/logging"
 )
 
@@ -24,6 +26,10 @@ func ViewMarkets(
 	[]*market.Market,
 	error,
 ) {
+	if req.GetUserRole() != pb.UserRole_USER_ROLE_CUSTOMER {
+		return nil, fmt.Errorf("%w: you are not allow to see markets", ErrForbidden)
+	}
+
 	all, err := marketCache.Values(ctx)
 
 	if err != nil {
@@ -73,11 +79,46 @@ func ViewMarkets(
 			logger.LogAttrs(
 				ctx,
 				slog.LevelError,
-				"[SpotInstrument/ViewMarkets/Unmarshal",
+				"[SpotInstrument/ViewMarkets/Unmarshal]",
 				slog.String("error", err.Error()),
 			)
 		}
 	}
 
 	return markets, nil
+}
+
+func IsAvailable(
+	ctx context.Context,
+	req *pb.IsAvailableRequest,
+) (
+	bool,
+	error,
+) {
+	if err := uuid.Validate(req.GetMarketId()); err != nil {
+		return false, fmt.Errorf("%w: invalid market id", ErrInvalidInput)
+	}
+
+	if req.GetUserRole() != pb.UserRole_USER_ROLE_CUSTOMER {
+		return false, fmt.Errorf("%w: you are not allow to see markets", ErrForbidden)
+	}
+
+	marketJSON, err := marketCache.Get(ctx, req.GetMarketId())
+
+	if err != nil {
+		if err == redis.ErrNil {
+			return false, nil
+		}
+
+		return false, fmt.Errorf("%w: %w", ErrInternal, err)
+	}
+
+	var mark market.Market
+	err = json.Unmarshal([]byte(marketJSON), &mark)
+
+	if err != nil {
+		return false, fmt.Errorf("%w: %w", ErrInternal, err)
+	}
+
+	return mark.IsActive(), nil
 }

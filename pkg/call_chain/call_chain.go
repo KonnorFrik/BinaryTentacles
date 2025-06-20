@@ -2,10 +2,10 @@ package callChain
 
 import "context"
 
+// ChainElement - element of chain for call.
 type ChainElement func(context.Context) error
 
 // CallChain - chain for call anything.
-// If any elements return non-nil error - next elements will not be called.
 type CallChain struct {
 	elements []ChainElement
 }
@@ -20,10 +20,13 @@ func New(elems ...ChainElement) *CallChain {
 // Call - start call a chain.
 // Return number of element who return non-nil error.
 // If chain complete successfully return zero-value.
+// If any elements return non-nil error - next elements will not be called.
 func (cc *CallChain) Call(ctx context.Context) (int, error) {
 	for i, el := range cc.elements {
-		if err := el(ctx); err != nil {
-			return i + 1, err
+		if el != nil {
+			if err := el(ctx); err != nil {
+				return i + 1, err
+			}
 		}
 	}
 
