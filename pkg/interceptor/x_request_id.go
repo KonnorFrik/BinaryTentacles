@@ -110,7 +110,7 @@ func StreamServerXRequestId(
 			ctx,
 			slog.LevelError,
 			"[X-REQUEST-ID]",
-			slog.String("Create-UUID Error", err.Error()),
+			slog.String("Get UUID Error", err.Error()),
 		)
 	}
 
@@ -121,7 +121,7 @@ func StreamServerXRequestId(
 			ctx,
 			slog.LevelError,
 			"[X-REQUEST-ID]",
-			slog.String("ID Create error", err.Error()),
+			slog.String("Create UUID error", err.Error()),
 		)
 	}
 

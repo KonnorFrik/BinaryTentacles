@@ -20,7 +20,7 @@ func newMarket(enabled bool, delAt time.Time) *market.Market {
 }
 
 // fill a redis cache with fake markets.
-// 1 valid
+// 1 valid (with hardcoded uuid "5d6f8857-fafe-432c-8380-2b340ec03bb7")
 // 3 invalid
 func fill() {
 	var (
