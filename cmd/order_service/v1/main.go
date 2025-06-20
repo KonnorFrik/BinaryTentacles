@@ -46,8 +46,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	userServer, err := NewServer(
+	tracer, err := NewTracer("http://localhost:14268/api/traces", "server")
+
+	if err != nil {
+		logger.LogAttrs(
+			nil,
+			slog.LevelError,
+			"[Server/NewTracer]",
+			slog.String("error", err.Error()),
+		)
+		os.Exit(1)
+	}
+
+	orderServer, err := NewServer(
 		WithSlog(logger.Logger),
+		WithOtelTracerProvider(tracer),
 	)
 	grpcServer := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
@@ -72,7 +85,7 @@ func main() {
 			recovery.StreamServerInterceptor(recovery.WithRecoveryHandler(RecoveryHandler)),
 		),
 	)
-	pb.RegisterOrderServiceServer(grpcServer, userServer)
+	pb.RegisterOrderServiceServer(grpcServer, orderServer)
 	logger.LogAttrs(
 		nil,
 		slog.LevelInfo,

@@ -18,9 +18,11 @@ services:
     links:
       - "spot_instrument"
       - "redis"
+      - "jaeger"
     depends_on:
       - spot_instrument
       - redis
+      - jaeger
     restart: always
     deploy:
       resources:
@@ -45,6 +47,7 @@ services:
     restart: always
     links:
       - "redis"
+      - "jaeger"
     deploy:
       resources:
         limits:
@@ -87,13 +90,16 @@ services:
         echo "user $REDIS_USER on >$REDIS_USER_PASSWORD ~* +@all" >> /usr/local/etc/redis/users.acl &&
         redis-server /usr/local/etc/redis/redis.conf --aclfile /usr/local/etc/redis/users.acl
       '
-  # jaeger:
-  #   image: jaegertracing/all-in-one
-  #   ports:
-  #     - "16686:16686" # web iface
-  #     - "14268:14268" # collector
-  #   deploy:
-  #     resources:
-  #       limits:
-  #         memory: 1G
-  #         cpus: 2
+
+  jaeger:
+    image: jaegertracing/all-in-one
+    hostname: jaeger
+    ports:
+      - "16686:16686" # web iface
+      - "14268:14268" # collector
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: 2
+

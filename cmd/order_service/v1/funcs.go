@@ -11,6 +11,18 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+func ContextValueAs[T any](ctx context.Context, key any) (T, bool) {
+	valueAny := ctx.Value(key)
+
+	if valueAny == nil {
+		var empty T
+		return empty, false
+	}
+
+	valueTyped, ok := valueAny.(T)
+	return valueTyped, ok
+}
+
 // InterceptorLogger adapts slog logger to interceptor logger.
 func InterceptorLogger(l *slog.Logger) logging.Logger {
 	return logging.LoggerFunc(func(ctx context.Context, lvl logging.Level, msg string, fields ...any) {
